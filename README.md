@@ -2,13 +2,36 @@
 
 ThreadForge 是一个减少多线程心智负担的结构化并发框架，目标是让并发代码更简单、更安全、更可观测。
 
+> 先降低并发代码的认知成本，再追求吞吐与性能。
+
+## 初衷（Why ThreadForge）
+
+在真实业务里，Java 的各种并发模型往往过于复杂，新手上手成本太高，现有的代码经过多线程的歪歪绕绕后也难以维护。
+
+比如下面这些显而易见的问题:
+
+- 任务生命周期分散在多个类和线程，边界不清晰
+- 失败传播、超时和取消逻辑重复且容易遗漏
+- 清理动作（资源释放、回滚）分散，异常路径经常漏收口
+- 观测信息（任务开始/结束/失败）不统一，排障成本高
+
+ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推理的模型里，让团队在维护并发代码时更省脑力。
+
+## ThreadForge 如何减少心智负担
+
+- 结构化作用域：所有任务都归属 `ThreadScope`，生命周期有边界
+- 默认安全策略：默认 `FAIL_FAST` + 默认 deadline + 自动取消/清理
+- 统一失败语义：通过 `FailurePolicy` 明确不同场景的失败处理方式
+- 统一观测入口：通过 `ThreadHook` 和 `TaskInfo` 做生命周期埋点
+- 跨 JDK 一致调用：JDK 21+ 优先虚拟线程，旧版本自动降级
+
 ## 设计目标
 
 - 默认行为正确：默认失败快速传播、默认超时、自动清理资源
 - 结构化生命周期：任务必须绑定在 `ThreadScope` 内
 - 跨 JDK 兼容：JDK 21+ 优先虚拟线程，其它版本自动降级
 - 可观测：为任务启动/成功/失败/取消提供 hook
-- 
+
 ## 当前实现状态
 
 - 结构化作用域：`ThreadScope`
@@ -19,7 +42,7 @@ ThreadForge 是一个减少多线程心智负担的结构化并发框架，目�
 - 调度策略：`Scheduler`
 - 延迟/周期任务：`DelayScheduler` + `ScheduledTask`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
-- 组合式任务 API：`Task.thenApply` / `Task.thenCompose` / `Task.exceptionally`
+- 组合式编排 API：`Task.thenApply` / `Task.thenCompose` / `Task.exceptionally`
 
 ## 快速开始
 

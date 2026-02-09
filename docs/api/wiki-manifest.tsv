@@ -1,0 +1,15 @@
+# section	title	source
+Overview	Home	Home.md
+Core	Core-ThreadScope	core/ThreadScope.md
+Core	Core-Task	core/Task.md
+Core	Core-Outcome	core/Outcome.md
+Runtime	Runtime-Scheduler	runtime/Scheduler.md
+Runtime	Runtime-DelayScheduler	runtime/DelayScheduler.md
+Runtime	Runtime-ScheduledTask	runtime/ScheduledTask.md
+Dataflow	Dataflow-Channel	dataflow/Channel.md
+Control	Control-FailurePolicy	control/FailurePolicy.md
+Control	Control-CancellationToken	control/CancellationToken.md
+Observability	Observability-ThreadHook	observability/ThreadHook.md
+Observability	Observability-TaskInfo	observability/TaskInfo.md
+Errors	Errors-Exceptions	errors/Exceptions.md
+Cookbook	Cookbook-Common-Patterns	cookbook/Common-Patterns.md

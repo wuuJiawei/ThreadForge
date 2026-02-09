@@ -21,3 +21,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Generated docs
+docs/github-wiki/

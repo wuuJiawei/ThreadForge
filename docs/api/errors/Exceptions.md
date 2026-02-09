@@ -1,0 +1,56 @@
+# Errors / Exceptions
+
+ThreadForge 的公开异常类型如下。
+
+## `CancelledException extends RuntimeException`
+
+取消语义异常。
+
+触发场景：
+
+- 任务运行中断
+- token 已取消后执行 `throwIfCancelled()`
+- `Task.await()` 等待期间被取消
+
+## `ScopeTimeoutException extends RuntimeException`
+
+作用域截止时间超时。
+
+触发场景：
+
+- `ThreadScope.await(...)` 超过 deadline
+- 并发许可等待超过 deadline
+
+## `AggregateException extends RuntimeException`
+
+批量失败聚合异常。
+
+触发场景：
+
+- `FailurePolicy.COLLECT_ALL` 且存在失败任务
+
+方法：
+
+- `List<Throwable> failures()`：失败列表（只读）
+
+## `TaskExecutionException extends RuntimeException`
+
+`Task.await()` 遇到受检异常时的包装异常。
+
+- `getCause()` 保留原始 checked exception
+
+## `ChannelClosedException extends RuntimeException`
+
+通道关闭语义异常。
+
+触发场景：
+
+- 已关闭通道继续 `send`
+- 关闭且耗尽后继续 `receive`
+
+## 异常处理建议
+
+- 聚合场景优先在 `ThreadScope.await(...)` 边界处理
+- `CancelledException` 一般视为流程控制，不当做业务错误
+- `ScopeTimeoutException` 需要配套降级逻辑
+- `AggregateException` 建议遍历 `failures()` 做分类处理

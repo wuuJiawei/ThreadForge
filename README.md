@@ -282,3 +282,7 @@ mvn verify
 ```
 
 默认会生成到 `docs/github-wiki/`，并包含 `Home.md` 与 `_Sidebar.md`。
+
+## License
+
+MIT，详见 `LICENSE`。

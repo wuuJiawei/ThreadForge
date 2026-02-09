@@ -1,5 +1,10 @@
 # Core / Task
 
+[![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
+
+
 `Task<T>` 表示 scope 内单个任务的结构化句柄，封装 `CompletableFuture<T>`。
 
 - 类型：`public final class Task<T>`

@@ -1,5 +1,10 @@
 # Runtime / Scheduler
 
+[![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
+
+
 `Scheduler` 是任务执行策略抽象，决定 `ThreadScope.submit(...)` 使用的执行器。
 
 - 类型：`public final class Scheduler`

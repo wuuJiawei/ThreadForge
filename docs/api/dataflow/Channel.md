@@ -1,5 +1,10 @@
 # Dataflow / Channel
 
+[![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
+
+
 `Channel<T>` 是有界阻塞通道，适合在多个任务间进行背压传递。
 
 - 类型：`public final class Channel<T> implements Iterable<T>`

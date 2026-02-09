@@ -1,5 +1,10 @@
 # Cookbook / 常见调用模式
 
+[![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
+
+
 ## 1. 并发聚合（失败即停）
 
 ```java

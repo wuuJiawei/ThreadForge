@@ -1,5 +1,10 @@
 # ThreadForge
 
+[![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
+
+
 ThreadForge 是一个减少多线程心智负担的结构化并发框架，目标是让并发代码更简单、更安全、更可观测。
 
 > 先降低并发代码的认知成本，再追求吞吐与性能。
@@ -51,6 +56,24 @@ try (ThreadScope scope = ThreadScope.open()) {
     Task<String> task = scope.submit("load-user", () -> "u-100");
     String user = task.await();
 }
+```
+
+## 安装
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>pub.lighting</groupId>
+    <artifactId>threadforge-core</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+Gradle:
+
+```gradle
+implementation("pub.lighting:threadforge-core:1.0.0")
 ```
 
 ## 核心 API

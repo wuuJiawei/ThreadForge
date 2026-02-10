@@ -421,6 +421,79 @@ class ThreadForgeCoreTest {
     }
 
     @Test
+    void builtInMetricsCollectDurationsAndRemainHookCompatible() throws Exception {
+        final AtomicInteger hookSuccess = new AtomicInteger();
+        final AtomicInteger hookFailure = new AtomicInteger();
+        final AtomicInteger hookCancel = new AtomicInteger();
+        final CountDownLatch cancellableStarted = new CountDownLatch(1);
+
+        ThreadHook hook = new ThreadHook() {
+            @Override
+            public void onSuccess(TaskInfo info, Duration duration) {
+                hookSuccess.incrementAndGet();
+            }
+
+            @Override
+            public void onFailure(TaskInfo info, Throwable error, Duration duration) {
+                hookFailure.incrementAndGet();
+            }
+
+            @Override
+            public void onCancel(TaskInfo info, Duration duration) {
+                hookCancel.incrementAndGet();
+            }
+        };
+
+        try (ThreadScope scope = ThreadScope.open()
+            .withScheduler(Scheduler.fixed(4))
+            .withFailurePolicy(FailurePolicy.SUPERVISOR)
+            .withHook(hook)) {
+
+                Task<Integer> ok = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                    @Override
+                    public Integer call() throws Exception {
+                        Thread.sleep(20L);
+                        return 1;
+                    }
+                });
+
+                Task<Integer> bad = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                    @Override
+                    public Integer call() {
+                        throw new IllegalStateException("boom");
+                    }
+                });
+
+                Task<Integer> cancellable = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                    @Override
+                    public Integer call() throws Exception {
+                        cancellableStarted.countDown();
+                        Thread.sleep(1000L);
+                        return 9;
+                    }
+                });
+
+                assertTrue(cancellableStarted.await(1L, TimeUnit.SECONDS));
+                cancellable.cancel();
+
+                scope.await(Arrays.<Task<?>>asList(ok, bad, cancellable));
+
+                ScopeMetricsSnapshot snapshot = scope.metrics();
+                assertEquals(3L, snapshot.started());
+                assertEquals(1L, snapshot.succeeded());
+                assertEquals(1L, snapshot.failed());
+                assertEquals(1L, snapshot.cancelled());
+                assertEquals(3L, snapshot.completed());
+                assertTrue(snapshot.totalDuration().toNanos() > 0L);
+                assertTrue(snapshot.maxDuration().toNanos() >= snapshot.averageDuration().toNanos());
+            }
+
+        assertEquals(1, hookSuccess.get());
+        assertEquals(1, hookFailure.get());
+        assertTrue(hookCancel.get() >= 1);
+    }
+
+    @Test
     void producerConsumerExampleWorksInsideScope() {
         try (ThreadScope scope = ThreadScope.open()) {
             final Channel<Integer> channel = Channel.bounded(8);

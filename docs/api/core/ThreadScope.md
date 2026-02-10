@@ -108,6 +108,15 @@ try (ThreadScope scope = ThreadScope.open()
 
 获取 scope 的取消令牌。
 
+### `ScopeMetricsSnapshot metrics()`
+
+获取当前作用域的内置指标快照。
+
+- 语义：
+  - 默认启用，无需额外配置
+  - 只返回快照，不阻塞任务执行线程
+  - 与 `ThreadHook` 可并存，互不替代
+
 ### `void defer(Runnable cleanup)`
 
 注册关闭时的清理动作。

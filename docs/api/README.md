@@ -33,6 +33,7 @@
 - [Control / CancellationToken](control/CancellationToken.md)
 - [Observability / ThreadHook](observability/ThreadHook.md)
 - [Observability / TaskInfo](observability/TaskInfo.md)
+- [Observability / ScopeMetricsSnapshot](observability/ScopeMetricsSnapshot.md)
 - [Errors / Exceptions](errors/Exceptions.md)
 - [Cookbook / 常见调用模式](cookbook/Common-Patterns.md)
 
@@ -59,6 +60,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 失败处理策略：`FailurePolicy`
 - 协作式取消：`CancellationToken`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
+- 内置指标快照：`ScopeMetricsSnapshot`
 - 语义异常：`CancelledException` / `ScopeTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
 
 ## JDK 兼容性

@@ -10,6 +10,7 @@
 - 类型：`public interface ThreadHook`
 - 所有方法均为 `default`，可按需覆写
 - 配置方式：`ThreadScope.open().withHook(hook)`
+- 与内置指标关系：`ThreadScope.metrics()` 负责聚合快照，hook 负责外部系统接入
 
 ## 回调方法
 

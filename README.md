@@ -28,6 +28,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 默认安全策略：默认 `FAIL_FAST` + 默认 deadline + 自动取消/清理
 - 统一失败语义：通过 `FailurePolicy` 明确不同场景的失败处理方式
 - 统一观测入口：通过 `ThreadHook` 和 `TaskInfo` 做生命周期埋点
+- 内置低开销指标：默认聚合任务耗时与状态计数，可按需读取快照
 - 跨 JDK 一致调用：JDK 21+ 优先虚拟线程，旧版本自动降级
 
 ## 设计目标
@@ -47,6 +48,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 调度策略：`Scheduler`
 - 延迟/周期任务：`DelayScheduler` + `ScheduledTask`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
+- 内置指标快照：`ScopeMetricsSnapshot`
 - 组合式编排 API：`Task.thenApply` / `Task.thenCompose` / `Task.exceptionally`
 
 ## 快速开始
@@ -104,6 +106,8 @@ Outcome await(Task<?> first, Task<?>... rest)
 
 List<T> awaitAll(Collection<? extends Task<T>> tasks)
 List<T> awaitAll(Task<T> first, Task<T>... rest)
+
+ScopeMetricsSnapshot metrics()
 ```
 
 调度任务：
@@ -163,6 +167,22 @@ CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> fn)
     @Override
     public void onCancel(TaskInfo info, Duration duration) {}
 });
+```
+
+### ScopeMetricsSnapshot（内置指标）
+
+```java
+ScopeMetricsSnapshot snapshot = scope.metrics();
+
+long started = snapshot.started();
+long succeeded = snapshot.succeeded();
+long failed = snapshot.failed();
+long cancelled = snapshot.cancelled();
+long completed = snapshot.completed();
+
+Duration total = snapshot.totalDuration();
+Duration avg = snapshot.averageDuration();
+Duration max = snapshot.maxDuration();
 ```
 
 ## 示例

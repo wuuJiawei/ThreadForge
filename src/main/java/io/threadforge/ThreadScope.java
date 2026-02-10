@@ -1,6 +1,7 @@
 package io.threadforge;
 
 import io.threadforge.internal.DefaultCancellationToken;
+import io.threadforge.internal.ScopeMetrics;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -32,6 +33,8 @@ public final class ThreadScope implements AutoCloseable {
 
     private static final AtomicLong SCOPE_IDS = new AtomicLong(1L);
     private static final Duration DEFAULT_DEADLINE = Duration.ofSeconds(30);
+    private static final ThreadHook NOOP_HOOK = new ThreadHook() {
+    };
 
     private final long scopeId;
     private final AtomicLong taskIdGen;
@@ -42,6 +45,7 @@ public final class ThreadScope implements AutoCloseable {
     private final Deque<Runnable> deferred;
     private final DefaultCancellationToken token;
     private final DelayScheduler delayScheduler;
+    private final ScopeMetrics metrics;
 
     private volatile Scheduler scheduler;
     private volatile FailurePolicy failurePolicy;
@@ -63,9 +67,9 @@ public final class ThreadScope implements AutoCloseable {
         this.scheduler = Scheduler.detect();
         this.failurePolicy = FailurePolicy.FAIL_FAST;
         this.deadline = DEFAULT_DEADLINE;
-        this.hook = new ThreadHook() {
-        };
+        this.hook = NOOP_HOOK;
         this.delayScheduler = DelayScheduler.shared();
+        this.metrics = new ScopeMetrics();
         this.token = new DefaultCancellationToken(new Runnable() {
             @Override
             public void run() {
@@ -134,6 +138,13 @@ public final class ThreadScope implements AutoCloseable {
 
     public CancellationToken token() {
         return token;
+    }
+
+    /**
+     * Returns current built-in runtime metrics snapshot of this scope.
+     */
+    public ScopeMetricsSnapshot metrics() {
+        return metrics.snapshot();
     }
 
     public void defer(Runnable cleanup) {
@@ -408,7 +419,7 @@ public final class ThreadScope implements AutoCloseable {
             }
             task.markFailed();
             future.completeExceptionally(rejectedExecutionException);
-            safeHookFailure(info, rejectedExecutionException, Duration.ZERO);
+            safeHookFailure(info, rejectedExecutionException, 0L);
         }
 
         return task;
@@ -421,7 +432,7 @@ public final class ThreadScope implements AutoCloseable {
             if (task.isCancelled() || token.isCancelled()) {
                 task.markCancelled();
                 task.toCompletableFuture().completeExceptionally(new CancelledException("Task cancelled before start"));
-                safeHookCancel(info, Duration.ofNanos(Math.max(0L, System.nanoTime() - started)));
+                safeHookCancel(info, elapsedNanos(started));
                 return;
             }
 
@@ -435,21 +446,21 @@ public final class ThreadScope implements AutoCloseable {
             T value = callable.call();
             task.markSuccess();
             task.toCompletableFuture().complete(value);
-            safeHookSuccess(info, Duration.ofNanos(Math.max(0L, System.nanoTime() - started)));
+            safeHookSuccess(info, elapsedNanos(started));
         } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
             task.markCancelled();
             CancelledException cancelledException = new CancelledException("Task interrupted", interruptedException);
             task.toCompletableFuture().completeExceptionally(cancelledException);
-            safeHookCancel(info, Duration.ofNanos(Math.max(0L, System.nanoTime() - started)));
+            safeHookCancel(info, elapsedNanos(started));
         } catch (CancelledException cancelledException) {
             task.markCancelled();
             task.toCompletableFuture().completeExceptionally(cancelledException);
-            safeHookCancel(info, Duration.ofNanos(Math.max(0L, System.nanoTime() - started)));
+            safeHookCancel(info, elapsedNanos(started));
         } catch (Throwable throwable) {
             task.markFailed();
             task.toCompletableFuture().completeExceptionally(throwable);
-            safeHookFailure(info, throwable, Duration.ofNanos(Math.max(0L, System.nanoTime() - started)));
+            safeHookFailure(info, throwable, elapsedNanos(started));
         } finally {
             if (acquiredSemaphore != null) {
                 acquiredSemaphore.release();
@@ -571,30 +582,50 @@ public final class ThreadScope implements AutoCloseable {
         configLocked.set(true);
     }
 
+    private long elapsedNanos(long startedAtNanos) {
+        return Math.max(0L, System.nanoTime() - startedAtNanos);
+    }
+
     private void safeHookStart(TaskInfo info) {
+        metrics.recordStart();
+        if (hook == NOOP_HOOK) {
+            return;
+        }
         try {
             hook.onStart(info);
         } catch (Throwable ignored) {
         }
     }
 
-    private void safeHookSuccess(TaskInfo info, Duration duration) {
+    private void safeHookSuccess(TaskInfo info, long durationNanos) {
+        metrics.recordTerminal(Task.State.SUCCESS, durationNanos);
+        if (hook == NOOP_HOOK) {
+            return;
+        }
         try {
-            hook.onSuccess(info, duration);
+            hook.onSuccess(info, Duration.ofNanos(durationNanos));
         } catch (Throwable ignored) {
         }
     }
 
-    private void safeHookFailure(TaskInfo info, Throwable throwable, Duration duration) {
+    private void safeHookFailure(TaskInfo info, Throwable throwable, long durationNanos) {
+        metrics.recordTerminal(Task.State.FAILED, durationNanos);
+        if (hook == NOOP_HOOK) {
+            return;
+        }
         try {
-            hook.onFailure(info, throwable, duration);
+            hook.onFailure(info, throwable, Duration.ofNanos(durationNanos));
         } catch (Throwable ignored) {
         }
     }
 
-    private void safeHookCancel(TaskInfo info, Duration duration) {
+    private void safeHookCancel(TaskInfo info, long durationNanos) {
+        metrics.recordTerminal(Task.State.CANCELLED, durationNanos);
+        if (hook == NOOP_HOOK) {
+            return;
+        }
         try {
-            hook.onCancel(info, duration);
+            hook.onCancel(info, Duration.ofNanos(durationNanos));
         } catch (Throwable ignored) {
         }
     }

@@ -22,6 +22,7 @@
 - [[Control-CancellationToken]]
 - [[Observability-ThreadHook]]
 - [[Observability-TaskInfo]]
+- [[Observability-ScopeMetricsSnapshot]]
 - [[Errors-Exceptions]]
 - [[Cookbook-Common-Patterns]]
 

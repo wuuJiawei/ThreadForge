@@ -11,5 +11,6 @@ Control	Control-FailurePolicy	control/FailurePolicy.md
 Control	Control-CancellationToken	control/CancellationToken.md
 Observability	Observability-ThreadHook	observability/ThreadHook.md
 Observability	Observability-TaskInfo	observability/TaskInfo.md
+Observability	Observability-ScopeMetricsSnapshot	observability/ScopeMetricsSnapshot.md
 Errors	Errors-Exceptions	errors/Exceptions.md
 Cookbook	Cookbook-Common-Patterns	cookbook/Common-Patterns.md

@@ -5,7 +5,7 @@
 
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>ThreadForge Core</name>
     <description>Structured concurrency framework for Java focused on reducing the cognitive load of concurrent programming.</description>
     <url>https://github.com/wuuJiawei/ThreadForge</url>

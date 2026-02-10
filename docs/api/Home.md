@@ -7,7 +7,7 @@
 
 这是 ThreadForge 的完整 API 调用文档首页。
 
-当前 Maven 坐标：`pub.lighting:threadforge-core:1.0.0`。
+当前 Maven 坐标：`pub.lighting:threadforge-core:1.0.1`。
 
 ## 快速导航
 

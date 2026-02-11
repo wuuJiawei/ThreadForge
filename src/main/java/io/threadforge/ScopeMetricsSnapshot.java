@@ -65,4 +65,24 @@ public final class ScopeMetricsSnapshot {
     public Duration maxDuration() {
         return Duration.ofNanos(maxDurationNanos);
     }
+
+    @Override
+    public String toString() {
+        Duration total = totalDuration();
+        Duration avg = averageDuration();
+        Duration max = maxDuration();
+
+        StringBuilder sb = new StringBuilder(256);
+        sb.append("ScopeMetricsSnapshot{\n");
+        sb.append("  started=").append(started).append(",\n");
+        sb.append("  succeeded=").append(succeeded).append(",\n");
+        sb.append("  failed=").append(failed).append(",\n");
+        sb.append("  cancelled=").append(cancelled).append(",\n");
+        sb.append("  completed=").append(completed()).append(",\n");
+        sb.append("  totalDuration=").append(total).append(" (").append(total.toMillis()).append(" ms),\n");
+        sb.append("  averageDuration=").append(avg).append(" (").append(avg.toMillis()).append(" ms),\n");
+        sb.append("  maxDuration=").append(max).append(" (").append(max.toMillis()).append(" ms)\n");
+        sb.append("}");
+        return sb.toString();
+    }
 }

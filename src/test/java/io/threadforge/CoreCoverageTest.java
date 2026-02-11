@@ -246,6 +246,30 @@ class CoreCoverageTest {
     }
 
     @Test
+    void scopeMetricsSnapshotToStringIsFormatted() {
+        ScopeMetricsSnapshot snapshot = new ScopeMetricsSnapshot(
+            5L,
+            3L,
+            1L,
+            1L,
+            Duration.ofMillis(200).toNanos(),
+            Duration.ofMillis(120).toNanos()
+        );
+
+        String text = snapshot.toString();
+        assertTrue(text.startsWith("ScopeMetricsSnapshot{\n"));
+        assertTrue(text.contains("started=5"));
+        assertTrue(text.contains("succeeded=3"));
+        assertTrue(text.contains("failed=1"));
+        assertTrue(text.contains("cancelled=1"));
+        assertTrue(text.contains("completed=5"));
+        assertTrue(text.contains("totalDuration=PT0.2S (200 ms)"));
+        assertTrue(text.contains("averageDuration=PT0.04S (40 ms)"));
+        assertTrue(text.contains("maxDuration=PT0.12S (120 ms)"));
+        assertTrue(text.endsWith("\n}"));
+    }
+
+    @Test
     void exceptionConstructorsRetainMessageAndCause() {
         CancelledException simple = new CancelledException("simple");
         assertEquals("simple", simple.getMessage());

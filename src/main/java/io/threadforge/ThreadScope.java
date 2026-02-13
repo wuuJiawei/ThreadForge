@@ -64,6 +64,7 @@ public final class ThreadScope implements AutoCloseable {
 
     private volatile Scheduler scheduler;
     private volatile FailurePolicy failurePolicy;
+    private volatile RetryPolicy retryPolicy;
     private volatile Duration deadline;
     private volatile ThreadHook hook;
     private volatile Semaphore concurrencySemaphore;
@@ -89,6 +90,7 @@ public final class ThreadScope implements AutoCloseable {
         this.deferred = new java.util.concurrent.ConcurrentLinkedDeque<Runnable>();
         this.scheduler = Scheduler.detect();
         this.failurePolicy = FailurePolicy.FAIL_FAST;
+        this.retryPolicy = RetryPolicy.noRetry();
         this.deadline = DEFAULT_DEADLINE;
         this.hook = NOOP_HOOK;
         this.delayScheduler = DelayScheduler.shared();
@@ -148,6 +150,18 @@ public final class ThreadScope implements AutoCloseable {
         Objects.requireNonNull(failurePolicy, "failurePolicy");
         ensureConfigurable();
         this.failurePolicy = failurePolicy;
+        return this;
+    }
+
+    /**
+     * 设置任务失败后的重试策略。
+     *
+     * <p>默认值为 {@link RetryPolicy#noRetry()}。
+     */
+    public ThreadScope withRetryPolicy(RetryPolicy retryPolicy) {
+        Objects.requireNonNull(retryPolicy, "retryPolicy");
+        ensureConfigurable();
+        this.retryPolicy = retryPolicy;
         return this;
     }
 
@@ -219,6 +233,13 @@ public final class ThreadScope implements AutoCloseable {
     }
 
     /**
+     * 获取当前重试策略。
+     */
+    public RetryPolicy retryPolicy() {
+        return retryPolicy;
+    }
+
+    /**
      * 获取当前 deadline 配置。
      */
     public Duration deadline() {
@@ -274,7 +295,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, id);
+        return submit("task-" + id, callable, retryPolicy, id);
     }
 
     /**
@@ -287,7 +308,23 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, id);
+        return submit(name, callable, retryPolicy, id);
+    }
+
+    /**
+     * 提交匿名任务，并覆盖当前 scope 的默认重试策略。
+     */
+    public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, retryPolicy, id);
+    }
+
+    /**
+     * 提交具名任务，并覆盖当前 scope 的默认重试策略。
+     */
+    public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, retryPolicy, id);
     }
 
     /**
@@ -574,13 +611,15 @@ public final class ThreadScope implements AutoCloseable {
     /**
      * 内部提交实现：完成配置锁定、并发许可获取、future 绑定、调度执行。
      */
-    private <T> Task<T> submit(String name, final Callable<T> callable, long id) {
+    private <T> Task<T> submit(String name, final Callable<T> callable, RetryPolicy retryPolicy, long id) {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(callable, "callable");
+        Objects.requireNonNull(retryPolicy, "retryPolicy");
         lockConfiguration();
         ensureOpen();
         final Semaphore semaphore = concurrencySemaphore;
         final boolean permitAcquired = acquireSubmissionPermit(semaphore);
+        final RetryPolicy taskRetryPolicy = retryPolicy;
 
         final CompletableFuture<T> future = new CompletableFuture<T>();
         final Task<T> task = new Task<T>(id, name, future);
@@ -597,7 +636,7 @@ public final class ThreadScope implements AutoCloseable {
             scheduler.executor().execute(new Runnable() {
                 @Override
                 public void run() {
-                    runTask(task, info, callable, permitAcquired ? semaphore : null);
+                    runTask(task, info, callable, taskRetryPolicy, permitAcquired ? semaphore : null);
                 }
             });
         } catch (RejectedExecutionException rejectedExecutionException) {
@@ -615,7 +654,13 @@ public final class ThreadScope implements AutoCloseable {
     /**
      * 在工作线程内执行任务主体，并统一处理状态迁移、异常传播、观测打点。
      */
-    private <T> void runTask(Task<T> task, TaskInfo info, Callable<T> callable, Semaphore acquiredSemaphore) {
+    private <T> void runTask(
+        Task<T> task,
+        TaskInfo info,
+        Callable<T> callable,
+        RetryPolicy retryPolicy,
+        Semaphore acquiredSemaphore
+    ) {
         long started = System.nanoTime();
 
         try {
@@ -633,7 +678,7 @@ public final class ThreadScope implements AutoCloseable {
             safeHookStart(info);
             token.throwIfCancelled();
 
-            T value = callable.call();
+            T value = executeWithRetry(callable, retryPolicy);
             task.markSuccess();
             task.toCompletableFuture().complete(value);
             safeHookSuccess(info, elapsedNanos(started));
@@ -655,6 +700,63 @@ public final class ThreadScope implements AutoCloseable {
             if (acquiredSemaphore != null) {
                 acquiredSemaphore.release();
             }
+        }
+    }
+
+    /**
+     * 在同一个任务上下文内执行重试，不额外拆分任务句柄。
+     */
+    private <T> T executeWithRetry(Callable<T> callable, RetryPolicy retryPolicy) throws Exception {
+        int attempt = 1;
+        List<Throwable> previousFailures = null;
+
+        while (true) {
+            token.throwIfCancelled();
+            try {
+                return callable.call();
+            } catch (InterruptedException interruptedException) {
+                throw interruptedException;
+            } catch (CancelledException cancelledException) {
+                throw cancelledException;
+            } catch (Throwable failure) {
+                if (!retryPolicy.allowsRetry(attempt, failure)) {
+                    if (previousFailures != null) {
+                        for (Throwable previousFailure : previousFailures) {
+                            if (previousFailure != failure) {
+                                failure.addSuppressed(previousFailure);
+                            }
+                        }
+                    }
+                    throw failure;
+                }
+
+                if (previousFailures == null) {
+                    previousFailures = new ArrayList<Throwable>();
+                }
+                previousFailures.add(failure);
+
+                sleepBeforeRetry(retryPolicy.nextDelay(attempt, failure));
+                attempt++;
+            }
+        }
+    }
+
+    /**
+     * 可中断的重试等待，周期性检查取消信号。
+     */
+    private void sleepBeforeRetry(Duration delay) throws InterruptedException {
+        if (delay == null || delay.isNegative() || delay.isZero()) {
+            return;
+        }
+        long remainingMillis = delay.toMillis();
+        if (remainingMillis == 0L) {
+            remainingMillis = 1L;
+        }
+        while (remainingMillis > 0L) {
+            token.throwIfCancelled();
+            long chunk = Math.min(remainingMillis, 100L);
+            Thread.sleep(chunk);
+            remainingMillis -= chunk;
         }
     }
 

@@ -30,6 +30,7 @@
 - [Runtime / ScheduledTask](runtime/ScheduledTask.md)
 - [Dataflow / Channel](dataflow/Channel.md)
 - [Control / FailurePolicy](control/FailurePolicy.md)
+- [Control / RetryPolicy](control/RetryPolicy.md)
 - [Control / CancellationToken](control/CancellationToken.md)
 - [Observability / ThreadHook](observability/ThreadHook.md)
 - [Observability / TaskInfo](observability/TaskInfo.md)
@@ -58,6 +59,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 延迟/周期调度：`DelayScheduler` + `ScheduledTask`
 - 生产者/消费者通道：`Channel<T>`
 - 失败处理策略：`FailurePolicy`
+- 失败重试策略：`RetryPolicy`
 - 协作式取消：`CancellationToken`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
 - 内置指标快照：`ScopeMetricsSnapshot`

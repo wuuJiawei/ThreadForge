@@ -14,6 +14,7 @@
 
 ```java
 import io.threadforge.FailurePolicy;
+import io.threadforge.RetryPolicy;
 import io.threadforge.Task;
 import io.threadforge.ThreadScope;
 
@@ -21,6 +22,7 @@ import java.time.Duration;
 
 try (ThreadScope scope = ThreadScope.open()
     .withFailurePolicy(FailurePolicy.FAIL_FAST)
+    .withRetryPolicy(RetryPolicy.fixedDelay(3, Duration.ofMillis(50)))
     .withConcurrencyLimit(32)
     .withDeadline(Duration.ofSeconds(2))) {
 
@@ -36,6 +38,7 @@ try (ThreadScope scope = ThreadScope.open()
 
 - `scheduler = Scheduler.detect()`
 - `failurePolicy = FailurePolicy.FAIL_FAST`
+- `retryPolicy = RetryPolicy.noRetry()`
 - `deadline = Duration.ofSeconds(30)`
 - 作用域关闭时自动取消未完成任务和计划任务
 
@@ -60,6 +63,14 @@ try (ThreadScope scope = ThreadScope.open()
 设置等待阶段的失败策略。
 
 - 参数：`failurePolicy != null`
+- 异常：同上（`NullPointerException` / `IllegalStateException`）
+
+### `ThreadScope withRetryPolicy(RetryPolicy retryPolicy)`
+
+设置任务默认重试策略。
+
+- 参数：`retryPolicy != null`
+- 默认：`RetryPolicy.noRetry()`
 - 异常：同上（`NullPointerException` / `IllegalStateException`）
 
 ### `ThreadScope withConcurrencyLimit(int limit)`
@@ -99,6 +110,10 @@ try (ThreadScope scope = ThreadScope.open()
 ### `FailurePolicy failurePolicy()`
 
 获取当前失败策略。
+
+### `RetryPolicy retryPolicy()`
+
+获取当前重试策略。
 
 ### `Duration deadline()`
 
@@ -142,6 +157,16 @@ try (ThreadScope scope = ThreadScope.open()
   - 若设置并发上限，提交线程可能阻塞等待许可
   - 如果等待许可过程中超时，会抛 `ScopeTimeoutException`
   - 如果等待许可过程中被取消，会抛 `CancelledException`
+
+### `<T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)`
+
+提交匿名任务，并覆盖 scope 默认重试策略。
+
+### `<T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy)`
+
+提交具名任务，并覆盖 scope 默认重试策略。
+
+- 参数：`name != null`，`callable != null`，`retryPolicy != null`
 
 ### `Outcome await(Collection<? extends Task<?>> tasks)`
 
@@ -221,3 +246,5 @@ try (ThreadScope scope = ThreadScope.open()
 - `SUPERVISOR`：不自动取消，失败写入 `Outcome`
 - `CANCEL_OTHERS`：取消其余任务，不直接抛失败
 - `IGNORE_ALL`：忽略失败，`Outcome.failures()` 为空
+
+重试策略详见：`docs/api/control/RetryPolicy.md`

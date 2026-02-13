@@ -43,6 +43,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 结构化作用域：`ThreadScope`
 - 任务句柄：`Task<T>`
 - 失败策略：`FailurePolicy`
+- 失败重试策略：`RetryPolicy`
 - 协作式取消：`CancellationToken`
 - 有界通道：`Channel<T>`
 - 调度策略：`Scheduler`
@@ -86,6 +87,7 @@ implementation("pub.lighting:threadforge-core:1.0.2")
 ThreadScope.open()
     .withScheduler(Scheduler.detect())
     .withFailurePolicy(FailurePolicy.FAIL_FAST)
+    .withRetryPolicy(RetryPolicy.noRetry())
     .withConcurrencyLimit(32)
     .withDeadline(Duration.ofSeconds(30))
     .withHook(hook);
@@ -96,6 +98,8 @@ ThreadScope.open()
 ```java
 Task<T> submit(Callable<T> callable)
 Task<T> submit(String name, Callable<T> callable)
+Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)
+Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy)
 ```
 
 等待任务：
@@ -150,6 +154,13 @@ CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> fn)
 - `SUPERVISOR`：不自动取消，失败写入 `Outcome`
 - `CANCEL_OTHERS`：失败后取消其余任务，不直接抛出
 - `IGNORE_ALL`：忽略失败，返回不含失败的 `Outcome`
+
+### RetryPolicy
+
+- `RetryPolicy.noRetry()`：默认行为，只执行 1 次
+- `RetryPolicy.attempts(n)`：最多执行 `n` 次（不含延迟）
+- `RetryPolicy.fixedDelay(n, delay)`：固定间隔重试
+- `RetryPolicy.exponentialBackoff(n, initial, multiplier, max)`：指数退避
 
 ### ThreadHook
 
@@ -291,6 +302,18 @@ try (ThreadScope scope = ThreadScope.open()) {
         .thenCompose(v -> CompletableFuture.completedFuture(v + 1))
         .exceptionally(err -> 0)
         .join();
+}
+```
+
+### 8. 失败自动重试
+
+```java
+try (ThreadScope scope = ThreadScope.open()
+    .withRetryPolicy(RetryPolicy.fixedDelay(3, Duration.ofMillis(50)))) {
+
+    Task<String> task = scope.submit("flaky-rpc", () -> callRemote());
+    scope.await(task);
+    String value = task.await();
 }
 ```
 

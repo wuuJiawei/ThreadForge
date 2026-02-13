@@ -322,4 +322,89 @@ class CoreCoverageTest {
             assertEquals(Integer.valueOf(2), values.get(1));
         }
     }
+
+    @Test
+    void retryPolicyFactoriesAndDefaultsWork() {
+        RetryPolicy noRetry = RetryPolicy.noRetry();
+        assertEquals(1, noRetry.maxAttempts());
+        assertFalse(noRetry.allowsRetry(1, new RuntimeException("x")));
+
+        RetryPolicy attempts = RetryPolicy.attempts(3);
+        assertTrue(attempts.allowsRetry(1, new IllegalStateException("boom")));
+        assertFalse(attempts.allowsRetry(3, new IllegalStateException("boom")));
+        assertFalse(attempts.allowsRetry(1, new CancelledException("cancel")));
+        assertEquals(Duration.ZERO, attempts.nextDelay(1, new RuntimeException("x")));
+    }
+
+    @Test
+    void retryPolicyBuilderSupportsCustomConditionAndBackoff() {
+        RetryPolicy custom = RetryPolicy.builder()
+            .maxAttempts(4)
+            .retryIf(new RetryPolicy.RetryCondition() {
+                @Override
+                public boolean shouldRetry(int attempt, Throwable failure) {
+                    return failure instanceof IllegalStateException;
+                }
+            })
+            .backoff(new RetryPolicy.BackoffStrategy() {
+                @Override
+                public Duration nextDelay(int attempt, Throwable failure) {
+                    return Duration.ofMillis(attempt * 10L);
+                }
+            })
+            .build();
+
+        assertTrue(custom.allowsRetry(1, new IllegalStateException("retry")));
+        assertFalse(custom.allowsRetry(1, new IllegalArgumentException("no-retry")));
+        assertEquals(Duration.ofMillis(20), custom.nextDelay(2, new IllegalStateException("retry")));
+    }
+
+    @Test
+    void retryPolicyFixedAndExponentialBackoffWork() {
+        RetryPolicy fixed = RetryPolicy.fixedDelay(3, Duration.ofMillis(5));
+        assertEquals(Duration.ofMillis(5), fixed.nextDelay(1, new RuntimeException("x")));
+
+        RetryPolicy exp = RetryPolicy.exponentialBackoff(4, Duration.ofMillis(10), 2.0d, Duration.ofMillis(25));
+        assertEquals(Duration.ofMillis(10), exp.nextDelay(1, new RuntimeException("x")));
+        assertEquals(Duration.ofMillis(20), exp.nextDelay(2, new RuntimeException("x")));
+        assertEquals(Duration.ofMillis(25), exp.nextDelay(3, new RuntimeException("x")));
+    }
+
+    @Test
+    void retryPolicyValidationRejectsInvalidInput() {
+        assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                RetryPolicy.attempts(0);
+            }
+        });
+
+        assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                RetryPolicy.fixedDelay(2, Duration.ofMillis(-1));
+            }
+        });
+
+        assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                RetryPolicy.builder().retryIf(null);
+            }
+        });
+
+        assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                RetryPolicy.builder().backoff(null);
+            }
+        });
+
+        assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                RetryPolicy.builder().exponentialBackoff(Duration.ofMillis(1), 0.5d, Duration.ofSeconds(1));
+            }
+        });
+    }
 }

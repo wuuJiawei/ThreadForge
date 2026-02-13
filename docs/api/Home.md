@@ -19,6 +19,7 @@
 - [[Runtime-ScheduledTask]]
 - [[Dataflow-Channel]]
 - [[Control-FailurePolicy]]
+- [[Control-RetryPolicy]]
 - [[Control-CancellationToken]]
 - [[Observability-ThreadHook]]
 - [[Observability-TaskInfo]]

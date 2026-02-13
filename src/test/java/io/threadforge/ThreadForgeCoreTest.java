@@ -28,8 +28,81 @@ class ThreadForgeCoreTest {
     void defaultsAreAsExpected() {
         try (ThreadScope scope = ThreadScope.open()) {
             assertEquals(FailurePolicy.FAIL_FAST, scope.failurePolicy());
+            assertEquals(1, scope.retryPolicy().maxAttempts());
             assertEquals(Duration.ofSeconds(30), scope.deadline());
             assertNotNull(scope.scheduler());
+        }
+    }
+
+    @Test
+    void retryPolicyRetriesAndEventuallySucceeds() {
+        final AtomicInteger attempts = new AtomicInteger();
+
+        try (ThreadScope scope = ThreadScope.open()
+            .withRetryPolicy(RetryPolicy.fixedDelay(3, Duration.ofMillis(5)))) {
+            Task<Integer> task = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    int current = attempts.incrementAndGet();
+                    if (current < 3) {
+                        throw new IllegalStateException("boom-" + current);
+                    }
+                    return 7;
+                }
+            });
+
+            scope.await(task);
+            assertEquals(3, attempts.get());
+            assertEquals(Integer.valueOf(7), task.await());
+        }
+    }
+
+    @Test
+    void retryPolicyExhaustionThrowsLastFailureWithSuppressedHistory() {
+        final AtomicInteger attempts = new AtomicInteger();
+
+        try (ThreadScope scope = ThreadScope.open()
+            .withRetryPolicy(RetryPolicy.attempts(3))) {
+            Task<Integer> task = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    int current = attempts.incrementAndGet();
+                    throw new IllegalStateException("boom-" + current);
+                }
+            });
+
+            IllegalStateException thrown = assertThrows(IllegalStateException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    scope.await(task);
+                }
+            });
+
+            assertEquals("boom-3", thrown.getMessage());
+            assertEquals(2, thrown.getSuppressed().length);
+            assertEquals(3, attempts.get());
+        }
+    }
+
+    @Test
+    void perTaskRetryPolicyOverridesScopeDefault() {
+        final AtomicInteger attempts = new AtomicInteger();
+
+        try (ThreadScope scope = ThreadScope.open().withRetryPolicy(RetryPolicy.noRetry())) {
+            Task<Integer> task = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    int current = attempts.incrementAndGet();
+                    if (current == 1) {
+                        throw new IllegalStateException("retry-me");
+                    }
+                    return 9;
+                }
+            }, RetryPolicy.attempts(2));
+
+            scope.await(task);
+            assertEquals(2, attempts.get());
+            assertEquals(Integer.valueOf(9), task.await());
         }
     }
 

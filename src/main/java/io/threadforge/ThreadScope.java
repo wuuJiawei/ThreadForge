@@ -295,7 +295,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, retryPolicy, id);
+        return submit("task-" + id, callable, retryPolicy, null, id);
     }
 
     /**
@@ -308,7 +308,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, retryPolicy, id);
+        return submit(name, callable, retryPolicy, null, id);
     }
 
     /**
@@ -316,7 +316,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, retryPolicy, id);
+        return submit("task-" + id, callable, retryPolicy, null, id);
     }
 
     /**
@@ -324,7 +324,39 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, retryPolicy, id);
+        return submit(name, callable, retryPolicy, null, id);
+    }
+
+    /**
+     * 提交匿名任务，并设置该任务的独立超时。
+     */
+    public <T> Task<T> submit(Callable<T> callable, Duration timeout) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交具名任务，并设置该任务的独立超时。
+     */
+    public <T> Task<T> submit(String name, Callable<T> callable, Duration timeout) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交匿名任务，并同时设置重试策略和任务级超时。
+     */
+    public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy, Duration timeout) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交具名任务，并同时设置重试策略和任务级超时。
+     */
+    public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, retryPolicy, timeout, id);
     }
 
     /**
@@ -611,24 +643,36 @@ public final class ThreadScope implements AutoCloseable {
     /**
      * 内部提交实现：完成配置锁定、并发许可获取、future 绑定、调度执行。
      */
-    private <T> Task<T> submit(String name, final Callable<T> callable, RetryPolicy retryPolicy, long id) {
+    private <T> Task<T> submit(
+        String name,
+        final Callable<T> callable,
+        RetryPolicy retryPolicy,
+        Duration timeout,
+        long id
+    ) {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(callable, "callable");
         Objects.requireNonNull(retryPolicy, "retryPolicy");
+        validateTaskTimeout(timeout);
         lockConfiguration();
         ensureOpen();
         final Semaphore semaphore = concurrencySemaphore;
         final boolean permitAcquired = acquireSubmissionPermit(semaphore);
         final RetryPolicy taskRetryPolicy = retryPolicy;
+        final Duration taskTimeout = timeout;
 
         final CompletableFuture<T> future = new CompletableFuture<T>();
         final Task<T> task = new Task<T>(id, name, future);
         final TaskInfo info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
+        final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
         tasks.add(task);
         future.whenComplete(new BiConsumer<T, Throwable>() {
             @Override
             public void accept(T value, Throwable throwable) {
                 tasks.remove(task);
+                if (timeoutTask != null) {
+                    timeoutTask.cancel();
+                }
             }
         });
 
@@ -662,12 +706,11 @@ public final class ThreadScope implements AutoCloseable {
         Semaphore acquiredSemaphore
     ) {
         long started = System.nanoTime();
+        CompletableFuture<T> future = task.toCompletableFuture();
 
         try {
             if (task.isCancelled() || token.isCancelled()) {
-                task.markCancelled();
-                task.toCompletableFuture().completeExceptionally(new CancelledException("Task cancelled before start"));
-                safeHookCancel(info, elapsedNanos(started));
+                completeTaskCancelled(task, future, new CancelledException("Task cancelled before start"), info, started);
                 return;
             }
 
@@ -679,23 +722,17 @@ public final class ThreadScope implements AutoCloseable {
             token.throwIfCancelled();
 
             T value = executeWithRetry(callable, retryPolicy);
-            task.markSuccess();
-            task.toCompletableFuture().complete(value);
-            safeHookSuccess(info, elapsedNanos(started));
+            if (future.complete(value)) {
+                task.markSuccess();
+                safeHookSuccess(info, elapsedNanos(started));
+            }
         } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
-            task.markCancelled();
-            CancelledException cancelledException = new CancelledException("Task interrupted", interruptedException);
-            task.toCompletableFuture().completeExceptionally(cancelledException);
-            safeHookCancel(info, elapsedNanos(started));
+            completeTaskCancelled(task, future, new CancelledException("Task interrupted", interruptedException), info, started);
         } catch (CancelledException cancelledException) {
-            task.markCancelled();
-            task.toCompletableFuture().completeExceptionally(cancelledException);
-            safeHookCancel(info, elapsedNanos(started));
+            completeTaskCancelled(task, future, cancelledException, info, started);
         } catch (Throwable throwable) {
-            task.markFailed();
-            task.toCompletableFuture().completeExceptionally(throwable);
-            safeHookFailure(info, throwable, elapsedNanos(started));
+            completeTaskFailure(task, future, throwable, info, started);
         } finally {
             if (acquiredSemaphore != null) {
                 acquiredSemaphore.release();
@@ -757,6 +794,67 @@ public final class ThreadScope implements AutoCloseable {
             long chunk = Math.min(remainingMillis, 100L);
             Thread.sleep(chunk);
             remainingMillis -= chunk;
+        }
+    }
+
+    private <T> void completeTaskCancelled(
+        Task<T> task,
+        CompletableFuture<T> future,
+        CancelledException cancelledException,
+        TaskInfo info,
+        long started
+    ) {
+        if (future.completeExceptionally(cancelledException)) {
+            task.markCancelled();
+            safeHookCancel(info, elapsedNanos(started));
+            return;
+        }
+        if (future.isCancelled() || task.state() == Task.State.CANCELLED) {
+            task.markCancelled();
+            safeHookCancel(info, elapsedNanos(started));
+        }
+    }
+
+    private <T> void completeTaskFailure(
+        Task<T> task,
+        CompletableFuture<T> future,
+        Throwable throwable,
+        TaskInfo info,
+        long started
+    ) {
+        if (future.completeExceptionally(throwable)) {
+            task.markFailed();
+            safeHookFailure(info, throwable, elapsedNanos(started));
+        }
+    }
+
+    private ScheduledTask scheduleTaskTimeout(final Task<?> task, final TaskInfo info, final Duration timeout) {
+        if (timeout == null) {
+            return null;
+        }
+        return delayScheduler.schedule(timeout, new Runnable() {
+            @Override
+            public void run() {
+                TaskTimeoutException timeoutException = taskTimeoutException(info, timeout);
+                if (task.toCompletableFuture().completeExceptionally(timeoutException)) {
+                    task.markFailed();
+                    task.interruptRunner();
+                    safeHookFailure(info, timeoutException, timeout.toNanos());
+                }
+            }
+        });
+    }
+
+    private TaskTimeoutException taskTimeoutException(TaskInfo info, Duration timeout) {
+        return new TaskTimeoutException("Task '" + info.name() + "' timed out after " + timeout.toMillis() + " ms");
+    }
+
+    private void validateTaskTimeout(Duration timeout) {
+        if (timeout == null) {
+            return;
+        }
+        if (timeout.isNegative() || timeout.isZero()) {
+            throw new IllegalArgumentException("task timeout must be > 0");
         }
     }
 

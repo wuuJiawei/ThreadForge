@@ -234,6 +234,16 @@ public final class Task<T> {
     }
 
     /**
+     * 中断当前运行线程（若存在）。
+     */
+    void interruptRunner() {
+        Thread runner = runnerThread.get();
+        if (runner != null) {
+            runner.interrupt();
+        }
+    }
+
+    /**
      * 统一异常转换并重新抛出。
      */
     private void rethrow(Throwable cause) {

@@ -43,6 +43,7 @@
 可能抛出：
 
 - `CancelledException`：任务被取消、中断或取消传播
+- `TaskTimeoutException`：任务触发任务级超时
 - `TaskExecutionException`：任务以受检异常失败（checked exception）
 - 原始 `RuntimeException` / `Error`：任务以非受检异常或 Error 失败
 

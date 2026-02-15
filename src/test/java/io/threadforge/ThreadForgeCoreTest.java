@@ -107,6 +107,104 @@ class ThreadForgeCoreTest {
     }
 
     @Test
+    void perTaskTimeoutFailsTaskButKeepsScopeAlive() {
+        try (ThreadScope scope = ThreadScope.open().withFailurePolicy(FailurePolicy.SUPERVISOR)) {
+            Task<Integer> slow = scope.submit("slow-timeout", new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    Thread.sleep(500L);
+                    return 1;
+                }
+            }, Duration.ofMillis(80));
+
+            Task<Integer> fast = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    return 2;
+                }
+            });
+
+            Outcome outcome = scope.await(Arrays.<Task<?>>asList(slow, fast));
+            assertEquals(1, outcome.succeeded());
+            assertEquals(1, outcome.failed());
+            assertTrue(outcome.failures().get(0) instanceof TaskTimeoutException);
+            assertEquals(Integer.valueOf(2), fast.await());
+
+            TaskTimeoutException timeout = assertThrows(TaskTimeoutException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    slow.await();
+                }
+            });
+            assertTrue(timeout.getMessage().contains("slow-timeout"));
+        }
+    }
+
+    @Test
+    void queuedTaskCanTimeoutBeforeStart() throws Exception {
+        try (ThreadScope scope = ThreadScope.open()
+            .withScheduler(Scheduler.fixed(1))
+            .withFailurePolicy(FailurePolicy.SUPERVISOR)) {
+            final CountDownLatch started = new CountDownLatch(1);
+            final CountDownLatch release = new CountDownLatch(1);
+
+            Task<Integer> blocker = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    started.countDown();
+                    release.await(1L, TimeUnit.SECONDS);
+                    return 1;
+                }
+            });
+            assertTrue(started.await(1L, TimeUnit.SECONDS));
+
+            Task<Integer> queued = scope.submit("queued-timeout", new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    return 9;
+                }
+            }, Duration.ofMillis(60));
+
+            Thread.sleep(140L);
+            release.countDown();
+
+            Outcome outcome = scope.await(Arrays.<Task<?>>asList(blocker, queued));
+            assertEquals(1, outcome.succeeded());
+            assertEquals(1, outcome.failed());
+            assertTrue(outcome.failures().get(0) instanceof TaskTimeoutException);
+
+            TaskTimeoutException timeout = assertThrows(TaskTimeoutException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    queued.await();
+                }
+            });
+            assertTrue(timeout.getMessage().contains("queued-timeout"));
+        }
+    }
+
+    @Test
+    void taskTimeoutTakesPrecedenceOverRetry() {
+        final AtomicInteger attempts = new AtomicInteger();
+
+        try (ThreadScope scope = ThreadScope.open().withFailurePolicy(FailurePolicy.SUPERVISOR)) {
+            Task<Integer> task = scope.submit("retry-timeout", new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    attempts.incrementAndGet();
+                    Thread.sleep(400L);
+                    return 1;
+                }
+            }, RetryPolicy.attempts(3), Duration.ofMillis(70));
+
+            Outcome outcome = scope.await(task);
+            assertEquals(1, outcome.failed());
+            assertTrue(outcome.failures().get(0) instanceof TaskTimeoutException);
+            assertEquals(1, attempts.get());
+        }
+    }
+
+    @Test
     void schedulerVirtualThreadFallbackIsPredictable() {
         Scheduler scheduler = Scheduler.virtualThreads();
         if (Scheduler.isVirtualThreadSupported()) {

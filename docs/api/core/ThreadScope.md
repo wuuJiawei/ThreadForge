@@ -168,6 +168,27 @@ try (ThreadScope scope = ThreadScope.open()
 
 - 参数：`name != null`，`callable != null`，`retryPolicy != null`
 
+### `<T> Task<T> submit(Callable<T> callable, Duration timeout)`
+
+提交匿名任务，并设置该任务的独立超时。
+
+### `<T> Task<T> submit(String name, Callable<T> callable, Duration timeout)`
+
+提交具名任务，并设置该任务的独立超时。
+
+### `<T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)`
+
+提交匿名任务，并同时设置重试策略和任务级超时。
+
+### `<T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)`
+
+提交具名任务，并同时设置重试策略和任务级超时。
+
+- 参数：`timeout == null` 或 `timeout > 0`
+- 超时行为：
+  - 仅该任务失败，异常类型为 `TaskTimeoutException`
+  - 不会自动取消整个 scope（除非失败策略触发）
+
 ### `Outcome await(Collection<? extends Task<?>> tasks)`
 
 等待任务集合完成并按策略处理失败。
@@ -177,6 +198,7 @@ try (ThreadScope scope = ThreadScope.open()
 - 空集合：返回 `Outcome(total=0, succeeded=0, cancelled=0, failures=[])`
 - 典型异常：
   - `ScopeTimeoutException`：截止时间到达
+  - `TaskTimeoutException`：任务级超时
   - `RuntimeException`：`FAIL_FAST` 下的首个失败
   - `AggregateException`：`COLLECT_ALL` 下有失败
 

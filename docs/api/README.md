@@ -63,7 +63,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 协作式取消：`CancellationToken`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
 - 内置指标快照：`ScopeMetricsSnapshot`
-- 语义异常：`CancelledException` / `ScopeTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
+- 语义异常：`CancelledException` / `ScopeTimeoutException` / `TaskTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
 
 ## JDK 兼容性
 

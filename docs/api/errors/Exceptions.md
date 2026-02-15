@@ -26,6 +26,15 @@ ThreadForge 的公开异常类型如下。
 - `ThreadScope.await(...)` 超过 deadline
 - 并发许可等待超过 deadline
 
+## `TaskTimeoutException extends RuntimeException`
+
+任务级超时异常。
+
+触发场景：
+
+- 使用 `submit(..., Duration timeout)` 或 `submit(..., RetryPolicy, Duration timeout)` 提交任务
+- 该任务执行超过自身 timeout
+
 ## `AggregateException extends RuntimeException`
 
 批量失败聚合异常。
@@ -58,4 +67,5 @@ ThreadForge 的公开异常类型如下。
 - 聚合场景优先在 `ThreadScope.await(...)` 边界处理
 - `CancelledException` 一般视为流程控制，不当做业务错误
 - `ScopeTimeoutException` 需要配套降级逻辑
+- `TaskTimeoutException` 建议按任务维度做重试/熔断统计
 - `AggregateException` 建议遍历 `failures()` 做分类处理

@@ -51,7 +51,7 @@ try (ThreadScope scope = ThreadScope.open()
 }
 ```
 
-## 4. 超时保护
+## 4. Scope 级超时保护
 
 ```java
 try (ThreadScope scope = ThreadScope.open()
@@ -65,7 +65,23 @@ try (ThreadScope scope = ThreadScope.open()
 }
 ```
 
-## 5. 生产者-消费者
+## 5. 任务级超时保护
+
+```java
+try (ThreadScope scope = ThreadScope.open()
+    .withFailurePolicy(FailurePolicy.SUPERVISOR)) {
+
+    Task<Integer> a = scope.submit("slow-rpc", () -> rpcA(), Duration.ofMillis(150));
+    Task<Integer> b = scope.submit("fast-rpc", () -> rpcB());
+
+    Outcome outcome = scope.await(a, b);
+    if (outcome.hasFailures() && outcome.failures().get(0) instanceof TaskTimeoutException) {
+        // slow-rpc 超时，fast-rpc 结果仍可继续使用
+    }
+}
+```
+
+## 6. 生产者-消费者
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -91,7 +107,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-## 6. 周期任务与取消
+## 7. 周期任务与取消
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -106,7 +122,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-## 7. try-with-resources + defer 资源清理
+## 8. try-with-resources + defer 资源清理
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {

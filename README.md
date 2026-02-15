@@ -100,6 +100,10 @@ Task<T> submit(Callable<T> callable)
 Task<T> submit(String name, Callable<T> callable)
 Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)
 Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy)
+Task<T> submit(Callable<T> callable, Duration timeout)
+Task<T> submit(String name, Callable<T> callable, Duration timeout)
+Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)
+Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)
 ```
 
 等待任务：
@@ -248,7 +252,26 @@ try (ThreadScope scope = ThreadScope.open().withDeadline(Duration.ofMillis(200))
 }
 ```
 
-### 5. 生产者-消费者
+### 5. 任务级超时（Per-Task Timeout）
+
+```java
+try (ThreadScope scope = ThreadScope.open()
+    .withFailurePolicy(FailurePolicy.SUPERVISOR)) {
+
+    Task<Integer> slow = scope.submit(
+        "slow-rpc",
+        () -> callSlowRpc(),
+        Duration.ofMillis(150)
+    );
+
+    Outcome outcome = scope.await(slow);
+    if (outcome.hasFailures() && outcome.failures().get(0) instanceof TaskTimeoutException) {
+        // 只处理该任务超时，不影响其他任务继续执行
+    }
+}
+```
+
+### 6. 生产者-消费者
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -274,7 +297,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 6. 延迟与周期任务
+### 7. 延迟与周期任务
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -291,7 +314,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 7. 组合式写法
+### 8. 组合式写法
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -305,7 +328,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 8. 失败自动重试
+### 9. 失败自动重试
 
 ```java
 try (ThreadScope scope = ThreadScope.open()

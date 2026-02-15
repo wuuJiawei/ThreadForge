@@ -282,6 +282,9 @@ class CoreCoverageTest {
         TaskExecutionException wrapped = new TaskExecutionException("execution-failed", cause);
         assertEquals("execution-failed", wrapped.getMessage());
         assertSame(cause, wrapped.getCause());
+
+        TaskTimeoutException timeout = new TaskTimeoutException("task-timeout");
+        assertEquals("task-timeout", timeout.getMessage());
     }
 
     @Test
@@ -406,5 +409,22 @@ class CoreCoverageTest {
                 RetryPolicy.builder().exponentialBackoff(Duration.ofMillis(1), 0.5d, Duration.ofSeconds(1));
             }
         });
+    }
+
+    @Test
+    void submitRejectsInvalidTaskTimeout() {
+        try (ThreadScope scope = ThreadScope.open()) {
+            assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    scope.submit(new Callable<Integer>() {
+                        @Override
+                        public Integer call() {
+                            return 1;
+                        }
+                    }, Duration.ZERO);
+                }
+            });
+        }
     }
 }

@@ -14,6 +14,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -201,6 +202,131 @@ class ThreadForgeCoreTest {
             assertEquals(1, outcome.failed());
             assertTrue(outcome.failures().get(0) instanceof TaskTimeoutException);
             assertEquals(1, attempts.get());
+        }
+    }
+
+    @Test
+    void contextPropagatesAcrossFixedThreads() {
+        Context.clear();
+        try {
+            Context.put("traceId", "trace-fixed");
+
+            try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.fixed(2))) {
+                Task<String> task = scope.submit(new java.util.concurrent.Callable<String>() {
+                    @Override
+                    public String call() {
+                        return Context.get("traceId");
+                    }
+                });
+                assertEquals("trace-fixed", task.await());
+            }
+        } finally {
+            Context.clear();
+        }
+    }
+
+    @Test
+    void contextRestoresBetweenReusedWorkerThreads() {
+        Context.clear();
+        try {
+            Context.put("requestId", "root-request");
+
+            try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.fixed(1))) {
+                Task<String> first = scope.submit(new java.util.concurrent.Callable<String>() {
+                    @Override
+                    public String call() {
+                        String seen = Context.get("requestId");
+                        Context.put("requestId", "mutated-in-task");
+                        return seen;
+                    }
+                });
+
+                Task<String> second = scope.submit(new java.util.concurrent.Callable<String>() {
+                    @Override
+                    public String call() {
+                        return Context.get("requestId");
+                    }
+                });
+
+                scope.await(first, second);
+                assertEquals("root-request", first.await());
+                assertEquals("root-request", second.await());
+            }
+        } finally {
+            Context.clear();
+        }
+    }
+
+    @Test
+    void nestedSubmissionCapturesCurrentTaskContext() {
+        Context.clear();
+        try {
+            try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.fixed(4))) {
+                Task<String> parent = scope.submit(new java.util.concurrent.Callable<String>() {
+                    @Override
+                    public String call() {
+                        Context.put("traceId", "nested-trace");
+                        Task<String> child = scope.submit(new java.util.concurrent.Callable<String>() {
+                            @Override
+                            public String call() {
+                                return Context.get("traceId");
+                            }
+                        });
+                        return child.await();
+                    }
+                });
+
+                assertEquals("nested-trace", parent.await());
+            }
+        } finally {
+            Context.clear();
+        }
+    }
+
+    @Test
+    void contextPropagatesToScheduledTasks() throws Exception {
+        Context.clear();
+        try {
+            Context.put("traceId", "scheduled-trace");
+            final AtomicReference<String> seen = new AtomicReference<String>();
+            final CountDownLatch done = new CountDownLatch(1);
+
+            try (ThreadScope scope = ThreadScope.open()) {
+                scope.schedule(Duration.ofMillis(20), new Runnable() {
+                    @Override
+                    public void run() {
+                        seen.set(Context.<String>get("traceId"));
+                        done.countDown();
+                    }
+                });
+                assertTrue(done.await(1L, TimeUnit.SECONDS));
+                assertEquals("scheduled-trace", seen.get());
+            }
+        } finally {
+            Context.clear();
+        }
+    }
+
+    @Test
+    void contextPropagatesOnVirtualThreadsWhenSupported() {
+        if (!Scheduler.isVirtualThreadSupported()) {
+            return;
+        }
+        Context.clear();
+        try {
+            Context.put("traceId", "trace-virtual");
+
+            try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.virtualThreads())) {
+                Task<String> task = scope.submit(new java.util.concurrent.Callable<String>() {
+                    @Override
+                    public String call() {
+                        return Context.get("traceId");
+                    }
+                });
+                assertEquals("trace-virtual", task.await());
+            }
+        } finally {
+            Context.clear();
         }
     }
 

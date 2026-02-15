@@ -81,7 +81,22 @@ try (ThreadScope scope = ThreadScope.open()
 }
 ```
 
-## 6. 生产者-消费者
+## 6. Context 自动传播
+
+```java
+Context.put("traceId", "req-1001");
+
+try (ThreadScope scope = ThreadScope.open()
+    .withScheduler(Scheduler.fixed(8))) {
+
+    Task<String> trace = scope.submit("rpc-a", () -> Context.get("traceId"));
+    String value = trace.await(); // req-1001
+}
+
+Context.clear();
+```
+
+## 7. 生产者-消费者
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -107,7 +122,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-## 7. 周期任务与取消
+## 8. 周期任务与取消
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -122,7 +137,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-## 8. try-with-resources + defer 资源清理
+## 9. try-with-resources + defer 资源清理
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {

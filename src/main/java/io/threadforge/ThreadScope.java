@@ -33,6 +33,10 @@ import java.util.function.BiConsumer;
  * 配置方法（{@code with*}）只能在第一次提交/调度前调用；
  * 任务提交与等待（{@code submit}/{@code await}）支持并发调用。
  *
+ * <p>上下文传播：
+ * 框架会自动捕获提交线程中的 {@link Context}，并在任务线程中恢复，
+ * 任务结束后恢复线程原始上下文，避免线程池复用导致串值。
+ *
  * <p>推荐用法示例：
  * <pre>{@code
  * try (ThreadScope scope = ThreadScope.open()
@@ -491,12 +495,18 @@ public final class ThreadScope implements AutoCloseable {
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
+        final Context.Snapshot contextSnapshot = Context.capture();
 
         ScheduledTask task = delayScheduler.schedule(delay, new Callable<T>() {
             @Override
             public T call() throws Exception {
-                token.throwIfCancelled();
-                return callable.call();
+                Context.Snapshot previous = Context.install(contextSnapshot);
+                try {
+                    token.throwIfCancelled();
+                    return callable.call();
+                } finally {
+                    Context.restore(previous);
+                }
             }
         });
         scheduledTasks.add(task);
@@ -512,12 +522,18 @@ public final class ThreadScope implements AutoCloseable {
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
+        final Context.Snapshot contextSnapshot = Context.capture();
 
         ScheduledTask task = delayScheduler.schedule(delay, new Runnable() {
             @Override
             public void run() {
-                token.throwIfCancelled();
-                runnable.run();
+                Context.Snapshot previous = Context.install(contextSnapshot);
+                try {
+                    token.throwIfCancelled();
+                    runnable.run();
+                } finally {
+                    Context.restore(previous);
+                }
             }
         });
         scheduledTasks.add(task);
@@ -536,12 +552,18 @@ public final class ThreadScope implements AutoCloseable {
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
+        final Context.Snapshot contextSnapshot = Context.capture();
 
         ScheduledTask task = delayScheduler.scheduleAtFixedRate(initial, period, new Runnable() {
             @Override
             public void run() {
-                token.throwIfCancelled();
-                runnable.run();
+                Context.Snapshot previous = Context.install(contextSnapshot);
+                try {
+                    token.throwIfCancelled();
+                    runnable.run();
+                } finally {
+                    Context.restore(previous);
+                }
             }
         });
         scheduledTasks.add(task);
@@ -560,12 +582,18 @@ public final class ThreadScope implements AutoCloseable {
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
+        final Context.Snapshot contextSnapshot = Context.capture();
 
         ScheduledTask task = delayScheduler.scheduleWithFixedDelay(initial, delay, new Runnable() {
             @Override
             public void run() {
-                token.throwIfCancelled();
-                runnable.run();
+                Context.Snapshot previous = Context.install(contextSnapshot);
+                try {
+                    token.throwIfCancelled();
+                    runnable.run();
+                } finally {
+                    Context.restore(previous);
+                }
             }
         });
         scheduledTasks.add(task);
@@ -664,6 +692,7 @@ public final class ThreadScope implements AutoCloseable {
         final CompletableFuture<T> future = new CompletableFuture<T>();
         final Task<T> task = new Task<T>(id, name, future);
         final TaskInfo info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
+        final Context.Snapshot contextSnapshot = Context.capture();
         final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
         tasks.add(task);
         future.whenComplete(new BiConsumer<T, Throwable>() {
@@ -680,7 +709,12 @@ public final class ThreadScope implements AutoCloseable {
             scheduler.executor().execute(new Runnable() {
                 @Override
                 public void run() {
-                    runTask(task, info, callable, taskRetryPolicy, permitAcquired ? semaphore : null);
+                    Context.Snapshot previous = Context.install(contextSnapshot);
+                    try {
+                        runTask(task, info, callable, taskRetryPolicy, permitAcquired ? semaphore : null);
+                    } finally {
+                        Context.restore(previous);
+                    }
                 }
             });
         } catch (RejectedExecutionException rejectedExecutionException) {

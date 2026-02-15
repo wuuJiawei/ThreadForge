@@ -40,6 +40,7 @@ try (ThreadScope scope = ThreadScope.open()
 - `failurePolicy = FailurePolicy.FAIL_FAST`
 - `retryPolicy = RetryPolicy.noRetry()`
 - `deadline = Duration.ofSeconds(30)`
+- 自动传播 `Context`（提交/调度时捕获，执行时恢复）
 - 作用域关闭时自动取消未完成任务和计划任务
 
 ## API 清单
@@ -157,6 +158,7 @@ try (ThreadScope scope = ThreadScope.open()
   - 若设置并发上限，提交线程可能阻塞等待许可
   - 如果等待许可过程中超时，会抛 `ScopeTimeoutException`
   - 如果等待许可过程中被取消，会抛 `CancelledException`
+  - 会自动传播提交线程中的 `Context`
 
 ### `<T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)`
 
@@ -239,6 +241,7 @@ try (ThreadScope scope = ThreadScope.open()
 - 以上 `schedule*` 通用约束：参数均不可为 `null`，scope 需未关闭
 - 首次调度同样会锁定配置
 - 返回：`ScheduledTask`，可取消
+- 会自动传播调度提交线程中的 `Context`
 
 ### `void close()`
 

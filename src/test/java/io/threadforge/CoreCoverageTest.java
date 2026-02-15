@@ -427,4 +427,48 @@ class CoreCoverageTest {
             });
         }
     }
+
+    @Test
+    void contextBasicOperationsWork() {
+        Context.clear();
+        try {
+            assertTrue(Context.snapshot().isEmpty());
+
+            Context.put("k1", "v1");
+            Context.put("k2", 7);
+            assertEquals("v1", Context.<String>get("k1"));
+            assertEquals(Integer.valueOf(7), Context.<Integer>get("k2"));
+            assertEquals(2, Context.snapshot().size());
+
+            Context.put("k2", null);
+            assertTrue(Context.get("k2") == null);
+
+            Context.remove("k1");
+            assertTrue(Context.snapshot().isEmpty());
+        } finally {
+            Context.clear();
+        }
+    }
+
+    @Test
+    void contextValidatesNullKeys() {
+        assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                Context.put(null, "x");
+            }
+        });
+        assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                Context.get(null);
+            }
+        });
+        assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                Context.remove(null);
+            }
+        });
+    }
 }

@@ -27,6 +27,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 结构化作用域：所有任务都归属 `ThreadScope`，生命周期有边界
 - 默认安全策略：默认 `FAIL_FAST` + 默认 deadline + 自动取消/清理
 - 统一失败语义：通过 `FailurePolicy` 明确不同场景的失败处理方式
+- 自动上下文传播：`Context` 在提交/调度时自动捕获并传播
 - 统一观测入口：通过 `ThreadHook` 和 `TaskInfo` 做生命周期埋点
 - 内置低开销指标：默认聚合任务耗时与状态计数，可按需读取快照
 - 跨 JDK 一致调用：JDK 21+ 优先虚拟线程，旧版本自动降级
@@ -45,6 +46,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 失败策略：`FailurePolicy`
 - 失败重试策略：`RetryPolicy`
 - 协作式取消：`CancellationToken`
+- 上下文传播：`Context`
 - 有界通道：`Channel<T>`
 - 调度策略：`Scheduler`
 - 延迟/周期任务：`DelayScheduler` + `ScheduledTask`
@@ -166,6 +168,19 @@ CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> fn)
 - `RetryPolicy.fixedDelay(n, delay)`：固定间隔重试
 - `RetryPolicy.exponentialBackoff(n, initial, multiplier, max)`：指数退避
 
+### Context
+
+```java
+Context.put("traceId", "req-1001");
+String traceId = Context.get("traceId");
+Context.remove("traceId");
+Context.clear();
+Map<String, Object> values = Context.snapshot();
+```
+
+- `Context` 会在 `submit/schedule` 时自动传播到任务线程（平台线程与虚拟线程都支持）
+- 任务结束后会自动恢复线程原始上下文，避免线程复用导致串值
+
 ### ThreadHook
 
 ```java
@@ -271,7 +286,18 @@ try (ThreadScope scope = ThreadScope.open()
 }
 ```
 
-### 6. 生产者-消费者
+### 6. 上下文自动传播（Context Propagation）
+
+```java
+Context.put("traceId", "req-1001");
+
+try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.fixed(4))) {
+    Task<String> trace = scope.submit(() -> Context.get("traceId"));
+    assert "req-1001".equals(trace.await());
+}
+```
+
+### 7. 生产者-消费者
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -297,7 +323,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 7. 延迟与周期任务
+### 8. 延迟与周期任务
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -314,7 +340,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 8. 组合式写法
+### 9. 组合式写法
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -328,7 +354,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 9. 失败自动重试
+### 10. 失败自动重试
 
 ```java
 try (ThreadScope scope = ThreadScope.open()

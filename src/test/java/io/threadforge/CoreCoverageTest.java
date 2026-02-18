@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -591,5 +592,125 @@ class CoreCoverageTest {
         Object spanState3 = spanStateConstructor.newInstance(new Object(), new Object());
         spans.put(22L, spanState3);
         hook.onCancel(info, Duration.ofMillis(8));
+    }
+
+    @Test
+    void threadHooksComposeInvokesBothHooksEvenWhenLeftThrows() {
+        final AtomicInteger leftCalls = new AtomicInteger();
+        final AtomicInteger rightCalls = new AtomicInteger();
+        TaskInfo info = new TaskInfo(1L, 2L, "task", Instant.now(), "fixed(1)");
+
+        ThreadHook left = new ThreadHook() {
+            @Override
+            public void onStart(TaskInfo taskInfo) {
+                leftCalls.incrementAndGet();
+                throw new RuntimeException("left-start");
+            }
+
+            @Override
+            public void onSuccess(TaskInfo taskInfo, Duration duration) {
+                leftCalls.incrementAndGet();
+                throw new RuntimeException("left-success");
+            }
+
+            @Override
+            public void onFailure(TaskInfo taskInfo, Throwable error, Duration duration) {
+                leftCalls.incrementAndGet();
+                throw new RuntimeException("left-failure");
+            }
+
+            @Override
+            public void onCancel(TaskInfo taskInfo, Duration duration) {
+                leftCalls.incrementAndGet();
+                throw new RuntimeException("left-cancel");
+            }
+        };
+
+        ThreadHook right = new ThreadHook() {
+            @Override
+            public void onStart(TaskInfo taskInfo) {
+                rightCalls.incrementAndGet();
+            }
+
+            @Override
+            public void onSuccess(TaskInfo taskInfo, Duration duration) {
+                rightCalls.incrementAndGet();
+            }
+
+            @Override
+            public void onFailure(TaskInfo taskInfo, Throwable error, Duration duration) {
+                rightCalls.incrementAndGet();
+            }
+
+            @Override
+            public void onCancel(TaskInfo taskInfo, Duration duration) {
+                rightCalls.incrementAndGet();
+            }
+        };
+
+        ThreadHook hook = ThreadHooks.compose(left, right);
+        hook.onStart(info);
+        hook.onSuccess(info, Duration.ofMillis(1));
+        hook.onFailure(info, new IllegalStateException("x"), Duration.ofMillis(1));
+        hook.onCancel(info, Duration.ofMillis(1));
+
+        assertEquals(4, leftCalls.get());
+        assertEquals(4, rightCalls.get());
+    }
+
+    @Test
+    void retryExecutorCollectsSuppressedFailures() {
+        final AtomicInteger attempts = new AtomicInteger();
+        CancellationToken token = new DefaultCancellationToken(new Runnable() {
+            @Override
+            public void run() {
+            }
+        });
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() throws Throwable {
+                RetryExecutor.execute(new Callable<Integer>() {
+                    @Override
+                    public Integer call() {
+                        int attempt = attempts.incrementAndGet();
+                        throw new IllegalStateException("boom-" + attempt);
+                    }
+                }, RetryPolicy.attempts(3), token);
+            }
+        });
+
+        assertEquals("boom-3", thrown.getMessage());
+        assertEquals(2, thrown.getSuppressed().length);
+        assertEquals(3, attempts.get());
+    }
+
+    @Test
+    void executionContextCarrierRestoresOriginalThreadContextAfterRun() {
+        Context.clear();
+        try {
+            Context.put("traceId", "captured");
+            ExecutionContextCarrier carrier = ExecutionContextCarrier.capture();
+            Context.put("traceId", "current");
+
+            final AtomicReference<String> seen = new AtomicReference<String>();
+            CancellationToken token = new DefaultCancellationToken(new Runnable() {
+                @Override
+                public void run() {
+                }
+            });
+            carrier.wrapRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    seen.set(Context.<String>get("traceId"));
+                    Context.put("traceId", "inside");
+                }
+            }, token).run();
+
+            assertEquals("captured", seen.get());
+            assertEquals("current", Context.<String>get("traceId"));
+        } finally {
+            Context.clear();
+        }
     }
 }

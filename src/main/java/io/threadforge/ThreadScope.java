@@ -255,7 +255,7 @@ public final class ThreadScope implements AutoCloseable {
         if (hook == NOOP_HOOK) {
             this.hook = otelHook;
         } else {
-            this.hook = composeHooks(this.hook, otelHook);
+            this.hook = ThreadHooks.compose(this.hook, otelHook);
         }
         return this;
     }
@@ -339,166 +339,89 @@ public final class ThreadScope implements AutoCloseable {
         deferred.addFirst(cleanup);
     }
 
-    /**
-     * 提交匿名任务，任务名自动生成为 {@code task-<id>}。
-     */
+    private long nextTaskId() {
+        return taskIdGen.getAndIncrement();
+    }
+
     public <T> Task<T> submit(Callable<T> callable) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交具名任务。
-     *
-     * <p>示例：
-     * <pre>{@code
-     * Task<String> user = scope.submit("load-user", () -> fetchUser());
-     * }</pre>
-     */
     public <T> Task<T> submit(String name, Callable<T> callable) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交匿名任务，并指定优先级。
-     */
     public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, taskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交具名任务，并指定优先级。
-     */
     public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, taskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交匿名任务，并覆盖当前 scope 的默认重试策略。
-     */
     public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交具名任务，并覆盖当前 scope 的默认重试策略。
-     */
     public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交匿名任务，并同时指定优先级与重试策略。
-     */
     public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority, RetryPolicy retryPolicy) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, taskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交具名任务，并同时指定优先级与重试策略。
-     */
     public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority, RetryPolicy retryPolicy) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, taskPriority, retryPolicy, null, id);
     }
 
-    /**
-     * 提交匿名任务，并设置该任务的独立超时。
-     */
     public <T> Task<T> submit(Callable<T> callable, Duration timeout) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交具名任务，并设置该任务的独立超时。
-     */
     public <T> Task<T> submit(String name, Callable<T> callable, Duration timeout) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, defaultTaskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交匿名任务，并同时指定优先级与任务级超时。
-     */
     public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority, Duration timeout) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, taskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交具名任务，并同时指定优先级与任务级超时。
-     */
     public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority, Duration timeout) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, taskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交匿名任务，并同时设置重试策略和任务级超时。
-     */
     public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy, Duration timeout) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交具名任务，并同时设置重试策略和任务级超时。
-     */
     public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout) {
-        long id = taskIdGen.getAndIncrement();
+        long id = nextTaskId();
         return submit(name, callable, defaultTaskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交匿名任务，同时指定优先级、重试策略和任务级超时。
-     */
-    public <T> Task<T> submit(
-        Callable<T> callable,
-        TaskPriority taskPriority,
-        RetryPolicy retryPolicy,
-        Duration timeout
-    ) {
-        long id = taskIdGen.getAndIncrement();
+    public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority, RetryPolicy retryPolicy, Duration timeout) {
+        long id = nextTaskId();
         return submit("task-" + id, callable, taskPriority, retryPolicy, timeout, id);
     }
 
-    /**
-     * 提交具名任务，同时指定优先级、重试策略和任务级超时。
-     */
-    public <T> Task<T> submit(
-        String name,
-        Callable<T> callable,
-        TaskPriority taskPriority,
-        RetryPolicy retryPolicy,
-        Duration timeout
-    ) {
-        long id = taskIdGen.getAndIncrement();
+    public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority, RetryPolicy retryPolicy, Duration timeout) {
+        long id = nextTaskId();
         return submit(name, callable, taskPriority, retryPolicy, timeout, id);
     }
-
-    /**
-     * 等待一组任务完成，并按失败策略生成聚合结果。
-     *
-     * <p>不同 {@link FailurePolicy} 会影响失败处理语义：
-     * FAIL_FAST 直接抛出首个失败；
-     * COLLECT_ALL 在结束后抛 {@link AggregateException}；
-     * SUPERVISOR/CANCEL_OTHERS/IGNORE_ALL 返回 {@link Outcome}。
-     *
-     * <p>示例：
-     * <pre>{@code
-     * Outcome outcome = scope.await(Arrays.asList(taskA, taskB));
-     * if (outcome.hasFailures()) {
-     *     // classify failures
-     * }
-     * }</pre>
-     */
     @SuppressWarnings("unchecked")
     public Outcome await(Collection<? extends Task<?>> awaitedTasks) {
         Objects.requireNonNull(awaitedTasks, "awaitedTasks");
@@ -556,9 +479,6 @@ public final class ThreadScope implements AutoCloseable {
         return new Outcome(taskList.size(), succeeded, cancelled, failures);
     }
 
-    /**
-     * {@link #await(Collection)} 的可变参数重载。
-     */
     public Outcome await(Task<?> first, Task<?>... rest) {
         Objects.requireNonNull(first, "first");
         Objects.requireNonNull(rest, "rest");
@@ -568,11 +488,6 @@ public final class ThreadScope implements AutoCloseable {
         return await(taskList);
     }
 
-    /**
-     * 等待同类型任务集合，并返回与输入顺序一致的结果列表。
-     *
-     * <p>失败或取消的任务位置会返回 {@code null}。
-     */
     @SuppressWarnings("unchecked")
     public <T> List<T> awaitAll(Collection<? extends Task<T>> awaitedTasks) {
         Objects.requireNonNull(awaitedTasks, "awaitedTasks");
@@ -591,9 +506,6 @@ public final class ThreadScope implements AutoCloseable {
         return Collections.unmodifiableList(values);
     }
 
-    /**
-     * {@link #awaitAll(Collection)} 的可变参数重载。
-     */
     @SafeVarargs
     public final <T> List<T> awaitAll(Task<T> first, Task<T>... rest) {
         Objects.requireNonNull(first, "first");
@@ -604,73 +516,31 @@ public final class ThreadScope implements AutoCloseable {
         return awaitAll(taskList);
     }
 
-    /**
-     * 提交一次性延迟任务（可返回值）。
-     *
-     * <p>任务执行前会检查取消令牌，已取消时抛出 {@link CancelledException}。
-     */
     public <T> ScheduledTask schedule(Duration delay, final Callable<T> callable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(callable, "callable");
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
-        final Context.Snapshot contextSnapshot = Context.capture();
-        final Object otelParentContext = OpenTelemetryBridge.currentContext();
+        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
 
-        ScheduledTask task = delayScheduler.schedule(delay, new Callable<T>() {
-            @Override
-            public T call() throws Exception {
-                Context.Snapshot previous = Context.install(contextSnapshot);
-                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
-                try {
-                    token.throwIfCancelled();
-                    return callable.call();
-                } finally {
-                    OpenTelemetryBridge.closeScope(otelScope);
-                    Context.restore(previous);
-                }
-            }
-        });
+        ScheduledTask task = delayScheduler.schedule(delay, executionContext.wrapCallable(callable, token));
         scheduledTasks.add(task);
         return task;
     }
 
-    /**
-     * 提交一次性延迟任务（无返回值）。
-     */
     public ScheduledTask schedule(Duration delay, final Runnable runnable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
-        final Context.Snapshot contextSnapshot = Context.capture();
-        final Object otelParentContext = OpenTelemetryBridge.currentContext();
-
-        ScheduledTask task = delayScheduler.schedule(delay, new Runnable() {
-            @Override
-            public void run() {
-                Context.Snapshot previous = Context.install(contextSnapshot);
-                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
-                try {
-                    token.throwIfCancelled();
-                    runnable.run();
-                } finally {
-                    OpenTelemetryBridge.closeScope(otelScope);
-                    Context.restore(previous);
-                }
-            }
-        });
+        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+        ScheduledTask task = delayScheduler.schedule(delay, executionContext.wrapRunnable(runnable, token));
         scheduledTasks.add(task);
         return task;
     }
 
-    /**
-     * 固定频率周期调度任务。
-     *
-     * <p>常用于心跳、指标上报等固定节拍场景。
-     */
     public ScheduledTask scheduleAtFixedRate(Duration initial, Duration period, final Runnable runnable) {
         Objects.requireNonNull(initial, "initial");
         Objects.requireNonNull(period, "period");
@@ -678,32 +548,12 @@ public final class ThreadScope implements AutoCloseable {
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
-        final Context.Snapshot contextSnapshot = Context.capture();
-        final Object otelParentContext = OpenTelemetryBridge.currentContext();
-
-        ScheduledTask task = delayScheduler.scheduleAtFixedRate(initial, period, new Runnable() {
-            @Override
-            public void run() {
-                Context.Snapshot previous = Context.install(contextSnapshot);
-                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
-                try {
-                    token.throwIfCancelled();
-                    runnable.run();
-                } finally {
-                    OpenTelemetryBridge.closeScope(otelScope);
-                    Context.restore(previous);
-                }
-            }
-        });
+        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+        ScheduledTask task = delayScheduler.scheduleAtFixedRate(initial, period, executionContext.wrapRunnable(runnable, token));
         scheduledTasks.add(task);
         return task;
     }
 
-    /**
-     * 固定延迟周期调度任务。
-     *
-     * <p>本次执行结束后，等待固定 delay 再启动下一次执行。
-     */
     public ScheduledTask scheduleWithFixedDelay(Duration initial, Duration delay, final Runnable runnable) {
         Objects.requireNonNull(initial, "initial");
         Objects.requireNonNull(delay, "delay");
@@ -711,39 +561,12 @@ public final class ThreadScope implements AutoCloseable {
         lockConfiguration();
         ensureOpen();
         compactFinishedScheduledTasks();
-        final Context.Snapshot contextSnapshot = Context.capture();
-        final Object otelParentContext = OpenTelemetryBridge.currentContext();
-
-        ScheduledTask task = delayScheduler.scheduleWithFixedDelay(initial, delay, new Runnable() {
-            @Override
-            public void run() {
-                Context.Snapshot previous = Context.install(contextSnapshot);
-                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
-                try {
-                    token.throwIfCancelled();
-                    runnable.run();
-                } finally {
-                    OpenTelemetryBridge.closeScope(otelScope);
-                    Context.restore(previous);
-                }
-            }
-        });
+        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+        ScheduledTask task = delayScheduler.scheduleWithFixedDelay(initial, delay, executionContext.wrapRunnable(runnable, token));
         scheduledTasks.add(task);
         return task;
     }
 
-    /**
-     * 关闭作用域并执行统一收尾。
-     *
-     * <p>关闭顺序：
-     * 1) 触发 token 取消；
-     * 2) 取消计划任务；
-     * 3) 取消未完成任务；
-     * 4) 执行 defer 清理（LIFO）；
-     * 5) 关闭 scope 持有的执行器。
-     *
-     * <p>该方法幂等，重复调用安全。
-     */
     @Override
     public void close() {
         if (!closed.compareAndSet(false, true)) {
@@ -799,10 +622,6 @@ public final class ThreadScope implements AutoCloseable {
         }
 
     }
-
-    /**
-     * 内部提交实现：完成配置锁定、并发许可获取、future 绑定、调度执行。
-     */
     private <T> Task<T> submit(
         String name,
         final Callable<T> callable,
@@ -826,8 +645,7 @@ public final class ThreadScope implements AutoCloseable {
         final CompletableFuture<T> future = new CompletableFuture<T>();
         final Task<T> task = new Task<T>(id, name, future);
         final TaskInfo info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
-        final Context.Snapshot contextSnapshot = Context.capture();
-        final Object otelParentContext = OpenTelemetryBridge.currentContext();
+        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
         final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
         tasks.add(task);
         future.whenComplete(new BiConsumer<T, Throwable>() {
@@ -841,19 +659,16 @@ public final class ThreadScope implements AutoCloseable {
         });
 
         try {
-            scheduler.executor().execute(Scheduler.prioritized(new Runnable() {
-                @Override
-                public void run() {
-                    Context.Snapshot previous = Context.install(contextSnapshot);
-                    Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
-                    try {
+            scheduler.executor().execute(Scheduler.prioritized(
+                executionContext.wrapRunnable(new Runnable() {
+                    @Override
+                    public void run() {
                         runTask(task, info, callable, taskRetryPolicy, permitAcquired ? semaphore : null);
-                    } finally {
-                        OpenTelemetryBridge.closeScope(otelScope);
-                        Context.restore(previous);
                     }
-                }
-            }, taskPriority, id));
+                }),
+                taskPriority,
+                id
+            ));
         } catch (RejectedExecutionException rejectedExecutionException) {
             if (permitAcquired && semaphore != null) {
                 semaphore.release();
@@ -866,9 +681,6 @@ public final class ThreadScope implements AutoCloseable {
         return task;
     }
 
-    /**
-     * 在工作线程内执行任务主体，并统一处理状态迁移、异常传播、观测打点。
-     */
     private <T> void runTask(
         Task<T> task,
         TaskInfo info,
@@ -892,7 +704,7 @@ public final class ThreadScope implements AutoCloseable {
             safeHookStart(info);
             token.throwIfCancelled();
 
-            T value = executeWithRetry(callable, retryPolicy);
+            T value = RetryExecutor.execute(callable, retryPolicy, token);
             if (future.complete(value)) {
                 task.markSuccess();
                 safeHookSuccess(info, elapsedNanos(started));
@@ -910,64 +722,6 @@ public final class ThreadScope implements AutoCloseable {
             }
         }
     }
-
-    /**
-     * 在同一个任务上下文内执行重试，不额外拆分任务句柄。
-     */
-    private <T> T executeWithRetry(Callable<T> callable, RetryPolicy retryPolicy) throws Exception {
-        int attempt = 1;
-        List<Throwable> previousFailures = null;
-
-        while (true) {
-            token.throwIfCancelled();
-            try {
-                return callable.call();
-            } catch (InterruptedException interruptedException) {
-                throw interruptedException;
-            } catch (CancelledException cancelledException) {
-                throw cancelledException;
-            } catch (Throwable failure) {
-                if (!retryPolicy.allowsRetry(attempt, failure)) {
-                    if (previousFailures != null) {
-                        for (Throwable previousFailure : previousFailures) {
-                            if (previousFailure != failure) {
-                                failure.addSuppressed(previousFailure);
-                            }
-                        }
-                    }
-                    throw failure;
-                }
-
-                if (previousFailures == null) {
-                    previousFailures = new ArrayList<Throwable>();
-                }
-                previousFailures.add(failure);
-
-                sleepBeforeRetry(retryPolicy.nextDelay(attempt, failure));
-                attempt++;
-            }
-        }
-    }
-
-    /**
-     * 可中断的重试等待，周期性检查取消信号。
-     */
-    private void sleepBeforeRetry(Duration delay) throws InterruptedException {
-        if (delay == null || delay.isNegative() || delay.isZero()) {
-            return;
-        }
-        long remainingMillis = delay.toMillis();
-        if (remainingMillis == 0L) {
-            remainingMillis = 1L;
-        }
-        while (remainingMillis > 0L) {
-            token.throwIfCancelled();
-            long chunk = Math.min(remainingMillis, 100L);
-            Thread.sleep(chunk);
-            remainingMillis -= chunk;
-        }
-    }
-
     private <T> void completeTaskCancelled(
         Task<T> task,
         CompletableFuture<T> future,
@@ -1028,69 +782,6 @@ public final class ThreadScope implements AutoCloseable {
             throw new IllegalArgumentException("task timeout must be > 0");
         }
     }
-
-    /**
-     * 合并两个 hook，并确保任一 hook 失败不影响另一个 hook 执行。
-     */
-    private ThreadHook composeHooks(final ThreadHook left, final ThreadHook right) {
-        return new ThreadHook() {
-            @Override
-            public void onStart(TaskInfo info) {
-                invokeOnStart(left, info);
-                invokeOnStart(right, info);
-            }
-
-            @Override
-            public void onSuccess(TaskInfo info, Duration duration) {
-                invokeOnSuccess(left, info, duration);
-                invokeOnSuccess(right, info, duration);
-            }
-
-            @Override
-            public void onFailure(TaskInfo info, Throwable error, Duration duration) {
-                invokeOnFailure(left, info, error, duration);
-                invokeOnFailure(right, info, error, duration);
-            }
-
-            @Override
-            public void onCancel(TaskInfo info, Duration duration) {
-                invokeOnCancel(left, info, duration);
-                invokeOnCancel(right, info, duration);
-            }
-        };
-    }
-
-    private void invokeOnStart(ThreadHook threadHook, TaskInfo info) {
-        try {
-            threadHook.onStart(info);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private void invokeOnSuccess(ThreadHook threadHook, TaskInfo info, Duration duration) {
-        try {
-            threadHook.onSuccess(info, duration);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private void invokeOnFailure(ThreadHook threadHook, TaskInfo info, Throwable error, Duration duration) {
-        try {
-            threadHook.onFailure(info, error, duration);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private void invokeOnCancel(ThreadHook threadHook, TaskInfo info, Duration duration) {
-        try {
-            threadHook.onCancel(info, duration);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /**
-     * 取消当前作用域仍未完成的普通任务和计划任务。
-     */
     private void cancelOutstandingTasks() {
         for (Task<?> task : tasks) {
             if (!task.isDone()) {
@@ -1103,9 +794,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 在“取消其他任务”语义下，取消失败任务之外的兄弟任务。
-     */
     private void cancelOthers(List<Task<?>> taskList, Task<?> failedTask) {
         for (Task<?> task : taskList) {
             if (task != failedTask && !task.isDone()) {
@@ -1114,11 +802,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 计算当前剩余 deadline。
-     *
-     * <p>若已到期，会主动触发取消并抛出 {@link ScopeTimeoutException}。
-     */
     private Duration remainingDeadline() {
         if (deadline == null) {
             return null;
@@ -1135,9 +818,6 @@ public final class ThreadScope implements AutoCloseable {
         return Duration.ofNanos(remainingNanos);
     }
 
-    /**
-     * 触发 deadline 超时状态，并传播为 token 取消。
-     */
     private void triggerDeadline() {
         if (!deadlineTriggered) {
             deadlineTriggered = true;
@@ -1145,11 +825,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 重新注册 deadline 监控任务。
-     *
-     * <p>每次 deadline 配置变更后都会调用该方法。
-     */
     private void rescheduleDeadlineMonitor() {
         this.deadlineAtNanos = System.nanoTime() + deadline.toNanos();
         if (deadlineTriggerTask != null) {
@@ -1163,11 +838,6 @@ public final class ThreadScope implements AutoCloseable {
         });
     }
 
-    /**
-     * 获取提交许可（并发限流）。
-     *
-     * <p>采用短周期轮询 + 剩余 deadline 控制，避免无限阻塞。
-     */
     private boolean acquireSubmissionPermit(Semaphore semaphore) {
         if (semaphore == null) {
             return false;
@@ -1193,9 +863,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 清理已经结束的计划任务句柄，避免内部集合无限增长。
-     */
     private void compactFinishedScheduledTasks() {
         for (ScheduledTask scheduledTask : scheduledTasks) {
             if (scheduledTask.isDone()) {
@@ -1204,9 +871,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 聚合关闭阶段异常：保留首个异常并把后续异常附加为 suppressed。
-     */
     private Throwable combine(Throwable primary, Throwable next) {
         if (primary == null) {
             return next;
@@ -1215,18 +879,12 @@ public final class ThreadScope implements AutoCloseable {
         return primary;
     }
 
-    /**
-     * 校验作用域仍处于打开状态。
-     */
     private void ensureOpen() {
         if (closed.get()) {
             throw new IllegalStateException("ThreadScope already closed");
         }
     }
 
-    /**
-     * 校验当前阶段允许修改配置。
-     */
     private void ensureConfigurable() {
         ensureOpen();
         if (configLocked.get()) {
@@ -1234,26 +892,14 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 在首次提交/调度后锁定配置，防止运行时改变语义。
-     */
     private void lockConfiguration() {
         configLocked.set(true);
     }
 
-    /**
-     * 计算运行耗时纳秒值，并确保非负。
-     */
     private long elapsedNanos(long startedAtNanos) {
         return Math.max(0L, System.nanoTime() - startedAtNanos);
     }
 
-    /**
-     * 安全触发 onStart：
-     * 1) 记录内置指标；
-     * 2) 若未配置 hook，快速返回；
-     * 3) 若配置了 hook，吞掉 hook 内异常，避免影响主流程。
-     */
     private void safeHookStart(TaskInfo info) {
         metrics.recordStart();
         if (hook == NOOP_HOOK) {
@@ -1265,9 +911,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 安全触发 onSuccess，并记录成功态指标。
-     */
     private void safeHookSuccess(TaskInfo info, long durationNanos) {
         metrics.recordTerminal(Task.State.SUCCESS, durationNanos);
         if (hook == NOOP_HOOK) {
@@ -1279,9 +922,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 安全触发 onFailure，并记录失败态指标。
-     */
     private void safeHookFailure(TaskInfo info, Throwable throwable, long durationNanos) {
         metrics.recordTerminal(Task.State.FAILED, durationNanos);
         if (hook == NOOP_HOOK) {
@@ -1293,9 +933,6 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
-    /**
-     * 安全触发 onCancel，并记录取消态指标。
-     */
     private void safeHookCancel(TaskInfo info, long durationNanos) {
         metrics.recordTerminal(Task.State.CANCELLED, durationNanos);
         if (hook == NOOP_HOOK) {

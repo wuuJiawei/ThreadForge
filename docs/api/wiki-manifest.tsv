@@ -12,6 +12,7 @@ Control	Control-RetryPolicy	control/RetryPolicy.md
 Control	Control-Context	control/Context.md
 Control	Control-CancellationToken	control/CancellationToken.md
 Observability	Observability-ThreadHook	observability/ThreadHook.md
+Observability	Observability-OpenTelemetryHook	observability/OpenTelemetryHook.md
 Observability	Observability-TaskInfo	observability/TaskInfo.md
 Observability	Observability-ScopeMetricsSnapshot	observability/ScopeMetricsSnapshot.md
 Errors	Errors-Exceptions	errors/Exceptions.md

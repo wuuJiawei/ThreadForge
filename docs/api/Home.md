@@ -23,6 +23,7 @@
 - [[Control-Context]]
 - [[Control-CancellationToken]]
 - [[Observability-ThreadHook]]
+- [[Observability-OpenTelemetryHook]]
 - [[Observability-TaskInfo]]
 - [[Observability-ScopeMetricsSnapshot]]
 - [[Errors-Exceptions]]

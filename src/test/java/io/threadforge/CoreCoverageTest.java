@@ -3,11 +3,14 @@ package io.threadforge;
 import io.threadforge.internal.DefaultCancellationToken;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -470,5 +473,68 @@ class CoreCoverageTest {
                 Context.remove(null);
             }
         });
+    }
+
+    @Test
+    void openTelemetryBridgeNoOpPathsAreSafeWhenUnavailable() {
+        if (OpenTelemetryBridge.isAvailable()) {
+            return;
+        }
+        assertTrue(OpenTelemetryBridge.currentContext() == null);
+        assertTrue(OpenTelemetryBridge.makeCurrent(new Object()) == null);
+        assertTrue(OpenTelemetryBridge.createTracer("io.threadforge.test") == null);
+        assertTrue(OpenTelemetryBridge.startSpan(null, "x", new TaskInfo(1L, 2L, "t", Instant.now(), "s")) == null);
+        assertTrue(OpenTelemetryBridge.spanMakeCurrent(new Object()) == null);
+        OpenTelemetryBridge.spanSetDuration(null, 10L);
+        OpenTelemetryBridge.spanSetCancelled(null, true);
+        OpenTelemetryBridge.spanRecordFailure(null, new RuntimeException("x"));
+        OpenTelemetryBridge.spanEnd(null);
+        OpenTelemetryBridge.closeScope(null);
+    }
+
+    @Test
+    void openTelemetryHookFallbackPathsAreCoveredWithoutApi() throws Exception {
+        if (OpenTelemetryBridge.isAvailable()) {
+            return;
+        }
+
+        assertThrows(IllegalStateException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                OpenTelemetryHook.create("io.threadforge");
+            }
+        });
+
+        Constructor<OpenTelemetryHook> hookConstructor = OpenTelemetryHook.class.getDeclaredConstructor(String.class, Object.class);
+        hookConstructor.setAccessible(true);
+        OpenTelemetryHook hook = hookConstructor.newInstance("io.threadforge.test", new Object());
+        assertEquals("io.threadforge.test", hook.instrumentationName());
+
+        TaskInfo info = new TaskInfo(11L, 22L, "task-a", Instant.now(), "fixed(1)");
+        hook.onStart(info);
+        hook.onSuccess(info, Duration.ofMillis(3));
+        hook.onFailure(info, new RuntimeException("boom"), Duration.ofMillis(4));
+        hook.onCancel(info, Duration.ofMillis(5));
+
+        Class<?> spanStateClass = Class.forName("io.threadforge.OpenTelemetryHook$SpanState");
+        Constructor<?> spanStateConstructor = spanStateClass.getDeclaredConstructor(Object.class, Object.class);
+        spanStateConstructor.setAccessible(true);
+
+        Field spansField = OpenTelemetryHook.class.getDeclaredField("spans");
+        spansField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Long, Object> spans = (Map<Long, Object>) spansField.get(hook);
+
+        Object spanState1 = spanStateConstructor.newInstance(new Object(), new Object());
+        spans.put(22L, spanState1);
+        hook.onSuccess(info, Duration.ofMillis(6));
+
+        Object spanState2 = spanStateConstructor.newInstance(new Object(), new Object());
+        spans.put(22L, spanState2);
+        hook.onFailure(info, new IllegalStateException("f"), Duration.ofMillis(7));
+
+        Object spanState3 = spanStateConstructor.newInstance(new Object(), new Object());
+        spans.put(22L, spanState3);
+        hook.onCancel(info, Duration.ofMillis(8));
     }
 }

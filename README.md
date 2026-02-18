@@ -50,6 +50,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 有界通道：`Channel<T>`
 - 调度策略：`Scheduler`
 - 延迟/周期任务：`DelayScheduler` + `ScheduledTask`
+- OpenTelemetry 集成：`withOpenTelemetry(...)` + `OpenTelemetryHook`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
 - 内置指标快照：`ScopeMetricsSnapshot`
 - 组合式编排 API：`Task.thenApply` / `Task.thenCompose` / `Task.exceptionally`
@@ -90,6 +91,7 @@ ThreadScope.open()
     .withScheduler(Scheduler.detect())
     .withFailurePolicy(FailurePolicy.FAIL_FAST)
     .withRetryPolicy(RetryPolicy.noRetry())
+    .withOpenTelemetry()
     .withConcurrencyLimit(32)
     .withDeadline(Duration.ofSeconds(30))
     .withHook(hook);
@@ -180,6 +182,12 @@ Map<String, Object> values = Context.snapshot();
 
 - `Context` 会在 `submit/schedule` 时自动传播到任务线程（平台线程与虚拟线程都支持）
 - 任务结束后会自动恢复线程原始上下文，避免线程复用导致串值
+
+### OpenTelemetry
+
+- `withOpenTelemetry()`：使用默认 instrumentation name `io.threadforge`
+- `withOpenTelemetry("your.instrumentation.name")`：指定 instrumentation name
+- 若 classpath 缺少 OpenTelemetry API，会在启用时快速失败并提示依赖
 
 ### ThreadHook
 
@@ -354,7 +362,18 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 10. 失败自动重试
+### 10. OpenTelemetry 追踪
+
+```java
+try (ThreadScope scope = ThreadScope.open()
+    .withOpenTelemetry("io.threadforge.demo")) {
+
+    Task<String> task = scope.submit("rpc-a", () -> callRemote());
+    task.await();
+}
+```
+
+### 11. 失败自动重试
 
 ```java
 try (ThreadScope scope = ThreadScope.open()

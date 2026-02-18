@@ -36,6 +36,48 @@ class ThreadForgeCoreTest {
     }
 
     @Test
+    void openTelemetryCanBeEnabledWhenApiExistsOrFailsFastWhenMissing() {
+        try (ThreadScope scope = ThreadScope.open()) {
+            if (OpenTelemetryBridge.isAvailable()) {
+                scope.withOpenTelemetry();
+            } else {
+                IllegalStateException error = assertThrows(IllegalStateException.class, new org.junit.jupiter.api.function.Executable() {
+                    @Override
+                    public void execute() {
+                        scope.withOpenTelemetry();
+                    }
+                });
+                assertTrue(error.getMessage().contains("OpenTelemetry API"));
+            }
+        }
+    }
+
+    @Test
+    void withOpenTelemetryValidatesArguments() {
+        try (ThreadScope scope = ThreadScope.open()) {
+            assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    scope.withOpenTelemetry(null);
+                }
+            });
+        }
+
+        if (!OpenTelemetryBridge.isAvailable()) {
+            return;
+        }
+
+        try (ThreadScope scope = ThreadScope.open()) {
+            assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    scope.withOpenTelemetry("   ");
+                }
+            });
+        }
+    }
+
+    @Test
     void retryPolicyRetriesAndEventuallySucceeds() {
         final AtomicInteger attempts = new AtomicInteger();
 

@@ -104,6 +104,23 @@ try (ThreadScope scope = ThreadScope.open()
 - 参数：`hook != null`
 - 异常：`NullPointerException` / `IllegalStateException`
 
+### `ThreadScope withOpenTelemetry()`
+
+启用 OpenTelemetry 任务追踪（默认 instrumentation name：`io.threadforge`）。
+
+### `ThreadScope withOpenTelemetry(String instrumentationName)`
+
+启用 OpenTelemetry 任务追踪，并指定 instrumentation name。
+
+- 参数：`instrumentationName != null` 且非空白
+- 异常：
+  - `NullPointerException`：参数为 `null`
+  - `IllegalArgumentException`：参数为空白
+  - `IllegalStateException`：classpath 不存在 OpenTelemetry API 或配置已锁定
+- 行为：
+  - 若已设置自定义 `hook`，会自动与 OpenTelemetry hook 组合
+  - 任一 hook 失败不影响另一个 hook 执行
+
 ### `Scheduler scheduler()`
 
 获取当前调度策略。

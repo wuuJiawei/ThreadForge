@@ -223,6 +223,30 @@ public final class ThreadScope implements AutoCloseable {
     }
 
     /**
+     * 启用 OpenTelemetry 任务追踪（默认 instrumentation name: {@code io.threadforge}）。
+     *
+     * <p>要求运行时 classpath 存在 OpenTelemetry API 依赖。
+     */
+    public ThreadScope withOpenTelemetry() {
+        return withOpenTelemetry("io.threadforge");
+    }
+
+    /**
+     * 启用 OpenTelemetry 任务追踪，并指定 instrumentation name。
+     */
+    public ThreadScope withOpenTelemetry(String instrumentationName) {
+        Objects.requireNonNull(instrumentationName, "instrumentationName");
+        ensureConfigurable();
+        ThreadHook otelHook = OpenTelemetryHook.create(instrumentationName);
+        if (hook == NOOP_HOOK) {
+            this.hook = otelHook;
+        } else {
+            this.hook = composeHooks(this.hook, otelHook);
+        }
+        return this;
+    }
+
+    /**
      * 获取当前调度器。
      */
     public Scheduler scheduler() {
@@ -496,15 +520,18 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final Context.Snapshot contextSnapshot = Context.capture();
+        final Object otelParentContext = OpenTelemetryBridge.currentContext();
 
         ScheduledTask task = delayScheduler.schedule(delay, new Callable<T>() {
             @Override
             public T call() throws Exception {
                 Context.Snapshot previous = Context.install(contextSnapshot);
+                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
                 try {
                     token.throwIfCancelled();
                     return callable.call();
                 } finally {
+                    OpenTelemetryBridge.closeScope(otelScope);
                     Context.restore(previous);
                 }
             }
@@ -523,15 +550,18 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final Context.Snapshot contextSnapshot = Context.capture();
+        final Object otelParentContext = OpenTelemetryBridge.currentContext();
 
         ScheduledTask task = delayScheduler.schedule(delay, new Runnable() {
             @Override
             public void run() {
                 Context.Snapshot previous = Context.install(contextSnapshot);
+                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
                 try {
                     token.throwIfCancelled();
                     runnable.run();
                 } finally {
+                    OpenTelemetryBridge.closeScope(otelScope);
                     Context.restore(previous);
                 }
             }
@@ -553,15 +583,18 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final Context.Snapshot contextSnapshot = Context.capture();
+        final Object otelParentContext = OpenTelemetryBridge.currentContext();
 
         ScheduledTask task = delayScheduler.scheduleAtFixedRate(initial, period, new Runnable() {
             @Override
             public void run() {
                 Context.Snapshot previous = Context.install(contextSnapshot);
+                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
                 try {
                     token.throwIfCancelled();
                     runnable.run();
                 } finally {
+                    OpenTelemetryBridge.closeScope(otelScope);
                     Context.restore(previous);
                 }
             }
@@ -583,15 +616,18 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final Context.Snapshot contextSnapshot = Context.capture();
+        final Object otelParentContext = OpenTelemetryBridge.currentContext();
 
         ScheduledTask task = delayScheduler.scheduleWithFixedDelay(initial, delay, new Runnable() {
             @Override
             public void run() {
                 Context.Snapshot previous = Context.install(contextSnapshot);
+                Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
                 try {
                     token.throwIfCancelled();
                     runnable.run();
                 } finally {
+                    OpenTelemetryBridge.closeScope(otelScope);
                     Context.restore(previous);
                 }
             }
@@ -693,6 +729,7 @@ public final class ThreadScope implements AutoCloseable {
         final Task<T> task = new Task<T>(id, name, future);
         final TaskInfo info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
         final Context.Snapshot contextSnapshot = Context.capture();
+        final Object otelParentContext = OpenTelemetryBridge.currentContext();
         final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
         tasks.add(task);
         future.whenComplete(new BiConsumer<T, Throwable>() {
@@ -710,9 +747,11 @@ public final class ThreadScope implements AutoCloseable {
                 @Override
                 public void run() {
                     Context.Snapshot previous = Context.install(contextSnapshot);
+                    Object otelScope = OpenTelemetryBridge.makeCurrent(otelParentContext);
                     try {
                         runTask(task, info, callable, taskRetryPolicy, permitAcquired ? semaphore : null);
                     } finally {
+                        OpenTelemetryBridge.closeScope(otelScope);
                         Context.restore(previous);
                     }
                 }
@@ -889,6 +928,65 @@ public final class ThreadScope implements AutoCloseable {
         }
         if (timeout.isNegative() || timeout.isZero()) {
             throw new IllegalArgumentException("task timeout must be > 0");
+        }
+    }
+
+    /**
+     * 合并两个 hook，并确保任一 hook 失败不影响另一个 hook 执行。
+     */
+    private ThreadHook composeHooks(final ThreadHook left, final ThreadHook right) {
+        return new ThreadHook() {
+            @Override
+            public void onStart(TaskInfo info) {
+                invokeOnStart(left, info);
+                invokeOnStart(right, info);
+            }
+
+            @Override
+            public void onSuccess(TaskInfo info, Duration duration) {
+                invokeOnSuccess(left, info, duration);
+                invokeOnSuccess(right, info, duration);
+            }
+
+            @Override
+            public void onFailure(TaskInfo info, Throwable error, Duration duration) {
+                invokeOnFailure(left, info, error, duration);
+                invokeOnFailure(right, info, error, duration);
+            }
+
+            @Override
+            public void onCancel(TaskInfo info, Duration duration) {
+                invokeOnCancel(left, info, duration);
+                invokeOnCancel(right, info, duration);
+            }
+        };
+    }
+
+    private void invokeOnStart(ThreadHook threadHook, TaskInfo info) {
+        try {
+            threadHook.onStart(info);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void invokeOnSuccess(ThreadHook threadHook, TaskInfo info, Duration duration) {
+        try {
+            threadHook.onSuccess(info, duration);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void invokeOnFailure(ThreadHook threadHook, TaskInfo info, Throwable error, Duration duration) {
+        try {
+            threadHook.onFailure(info, error, duration);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void invokeOnCancel(ThreadHook threadHook, TaskInfo info, Duration duration) {
+        try {
+            threadHook.onCancel(info, duration);
+        } catch (Throwable ignored) {
         }
     }
 

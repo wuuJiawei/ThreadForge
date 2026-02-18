@@ -1,5 +1,6 @@
 package io.threadforge;
 
+import io.threadforge.internal.otel.OpenTelemetryBridge;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

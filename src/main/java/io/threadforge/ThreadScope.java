@@ -1,7 +1,8 @@
 package io.threadforge;
 
-import io.threadforge.internal.DefaultCancellationToken;
-import io.threadforge.internal.ScopeMetrics;
+import io.threadforge.internal.cancellation.DefaultCancellationToken;
+import io.threadforge.internal.hook.ThreadHooks;
+import io.threadforge.internal.metrics.ScopeMetrics;
 
 import java.time.Duration;
 import java.time.Instant;

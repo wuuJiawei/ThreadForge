@@ -1,21 +1,23 @@
-package io.threadforge;
+package io.threadforge.internal.otel;
+
+import io.threadforge.TaskInfo;
 
 /**
  * Reflection bridge for OpenTelemetry API.
  *
  * <p>This keeps threadforge-core free from hard OpenTelemetry dependency.
  */
-final class OpenTelemetryBridge {
+public final class OpenTelemetryBridge {
 
     private OpenTelemetryBridge() {
     }
 
-    static boolean isAvailable() {
+    public static boolean isAvailable() {
         return load("io.opentelemetry.context.Context") != null
             && load("io.opentelemetry.api.GlobalOpenTelemetry") != null;
     }
 
-    static Object currentContext() {
+    public static Object currentContext() {
         Class<?> contextClass = load("io.opentelemetry.context.Context");
         if (contextClass == null) {
             return null;
@@ -23,21 +25,21 @@ final class OpenTelemetryBridge {
         return invokeStatic(contextClass, "current");
     }
 
-    static Object makeCurrent(Object context) {
+    public static Object makeCurrent(Object context) {
         if (context == null) {
             return null;
         }
         return invoke(context, "makeCurrent");
     }
 
-    static void closeScope(Object scope) {
+    public static void closeScope(Object scope) {
         if (scope == null) {
             return;
         }
         invoke(scope, "close");
     }
 
-    static Object createTracer(String instrumentationName) {
+    public static Object createTracer(String instrumentationName) {
         Class<?> global = load("io.opentelemetry.api.GlobalOpenTelemetry");
         if (global == null) {
             return null;
@@ -45,7 +47,7 @@ final class OpenTelemetryBridge {
         return invokeStatic(global, "getTracer", new Class<?>[]{String.class}, new Object[]{instrumentationName});
     }
 
-    static Object startSpan(Object tracer, String spanName, TaskInfo info) {
+    public static Object startSpan(Object tracer, String spanName, TaskInfo info) {
         if (tracer == null) {
             return null;
         }
@@ -64,14 +66,14 @@ final class OpenTelemetryBridge {
         return invoke(builder, "startSpan");
     }
 
-    static Object spanMakeCurrent(Object span) {
+    public static Object spanMakeCurrent(Object span) {
         if (span == null) {
             return null;
         }
         return invoke(span, "makeCurrent");
     }
 
-    static void spanSetDuration(Object span, long durationMillis) {
+    public static void spanSetDuration(Object span, long durationMillis) {
         if (span == null) {
             return;
         }
@@ -79,7 +81,7 @@ final class OpenTelemetryBridge {
             new Object[]{"threadforge.duration_ms", Long.valueOf(durationMillis)});
     }
 
-    static void spanSetCancelled(Object span, boolean cancelled) {
+    public static void spanSetCancelled(Object span, boolean cancelled) {
         if (span == null) {
             return;
         }
@@ -87,7 +89,7 @@ final class OpenTelemetryBridge {
             new Object[]{"threadforge.cancelled", Boolean.valueOf(cancelled)});
     }
 
-    static void spanRecordFailure(Object span, Throwable error) {
+    public static void spanRecordFailure(Object span, Throwable error) {
         if (span == null || error == null) {
             return;
         }
@@ -101,7 +103,7 @@ final class OpenTelemetryBridge {
         }
     }
 
-    static void spanEnd(Object span) {
+    public static void spanEnd(Object span) {
         if (span == null) {
             return;
         }

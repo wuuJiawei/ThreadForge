@@ -1,13 +1,15 @@
-package io.threadforge;
+package io.threadforge.internal.hook;
 
 import java.time.Duration;
+import io.threadforge.TaskInfo;
+import io.threadforge.ThreadHook;
 
-final class ThreadHooks {
+public final class ThreadHooks {
 
     private ThreadHooks() {
     }
 
-    static ThreadHook compose(final ThreadHook left, final ThreadHook right) {
+    public static ThreadHook compose(final ThreadHook left, final ThreadHook right) {
         return new ThreadHook() {
             @Override
             public void onStart(TaskInfo info) {

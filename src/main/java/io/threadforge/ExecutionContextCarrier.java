@@ -1,5 +1,7 @@
 package io.threadforge;
 
+import io.threadforge.internal.otel.OpenTelemetryBridge;
+
 import java.util.concurrent.Callable;
 
 final class ExecutionContextCarrier {

@@ -1,5 +1,7 @@
 package io.threadforge;
 
+import io.threadforge.internal.otel.OpenTelemetryBridge;
+
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;

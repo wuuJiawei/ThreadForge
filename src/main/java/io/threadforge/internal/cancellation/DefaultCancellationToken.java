@@ -1,4 +1,4 @@
-package io.threadforge.internal;
+package io.threadforge.internal.cancellation;
 
 import io.threadforge.CancelledException;
 import io.threadforge.CancellationToken;

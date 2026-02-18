@@ -1,4 +1,4 @@
-package io.threadforge.internal;
+package io.threadforge.internal.metrics;
 
 import io.threadforge.ScopeMetricsSnapshot;
 import io.threadforge.Task;

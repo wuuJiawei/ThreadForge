@@ -159,6 +159,13 @@ class CoreCoverageTest {
         } finally {
             external.shutdownNow();
         }
+
+        assertThrows(IllegalArgumentException.class, new org.junit.jupiter.api.function.Executable() {
+            @Override
+            public void execute() {
+                Scheduler.priority(0);
+            }
+        });
     }
 
     @Test
@@ -428,6 +435,54 @@ class CoreCoverageTest {
                     }, Duration.ZERO);
                 }
             });
+        }
+    }
+
+    @Test
+    void prioritySubmitOverloadsAndValidationWork() {
+        try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.priority(2))) {
+            assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    scope.withDefaultTaskPriority(null);
+                }
+            });
+
+            assertThrows(NullPointerException.class, new org.junit.jupiter.api.function.Executable() {
+                @Override
+                public void execute() {
+                    scope.submit(new Callable<Integer>() {
+                        @Override
+                        public Integer call() {
+                            return 1;
+                        }
+                    }, (TaskPriority) null);
+                }
+            });
+
+            Task<Integer> p1 = scope.submit(new Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    return 1;
+                }
+            }, TaskPriority.HIGH, RetryPolicy.noRetry());
+            Task<Integer> p2 = scope.submit(new Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    return 2;
+                }
+            }, TaskPriority.NORMAL, Duration.ofSeconds(1));
+            Task<Integer> p3 = scope.submit("p3", new Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    return 3;
+                }
+            }, TaskPriority.LOW, RetryPolicy.noRetry(), Duration.ofSeconds(1));
+
+            scope.await(p1, p2, p3);
+            assertEquals(Integer.valueOf(1), p1.await());
+            assertEquals(Integer.valueOf(2), p2.await());
+            assertEquals(Integer.valueOf(3), p3.await());
         }
     }
 

@@ -27,6 +27,19 @@
   - 拒绝策略 = `CallerRunsPolicy`
   - 允许核心线程超时回收
 
+### `static Scheduler priority(int size)`
+
+创建支持任务优先级队列的固定线程池调度器。
+
+- 参数：`size > 0`
+- 线程池特性：
+  - 核心线程数 = 最大线程数 = `size`
+  - 队列类型 = `PriorityBlockingQueue`
+  - 拒绝策略 = `CallerRunsPolicy`
+- 说明：
+  - 需配合 `TaskPriority` 使用
+  - 同优先级按提交顺序执行
+
 ### `static Scheduler from(ExecutorService executor)`
 
 基于外部执行器创建调度器。
@@ -56,7 +69,7 @@
 
 ### `String name()`
 
-调度器名称，如 `commonPool`、`fixed(8)`、`external`、`virtualThreads`。
+调度器名称，如 `commonPool`、`fixed(8)`、`priority(8)`、`external`、`virtualThreads`。
 
 ### `boolean isVirtualThreadMode()`
 

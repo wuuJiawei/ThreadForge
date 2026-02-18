@@ -31,6 +31,7 @@
 - [Dataflow / Channel](dataflow/Channel.md)
 - [Control / FailurePolicy](control/FailurePolicy.md)
 - [Control / RetryPolicy](control/RetryPolicy.md)
+- [Control / TaskPriority](control/TaskPriority.md)
 - [Control / Context](control/Context.md)
 - [Control / CancellationToken](control/CancellationToken.md)
 - [Observability / ThreadHook](observability/ThreadHook.md)
@@ -62,6 +63,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 生产者/消费者通道：`Channel<T>`
 - 失败处理策略：`FailurePolicy`
 - 失败重试策略：`RetryPolicy`
+- 任务优先级：`TaskPriority`
 - 上下文传播：`Context`
 - 协作式取消：`CancellationToken`
 - 生命周期观测：`ThreadHook` + `TaskInfo`

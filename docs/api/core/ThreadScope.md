@@ -15,6 +15,7 @@
 ```java
 import io.threadforge.FailurePolicy;
 import io.threadforge.RetryPolicy;
+import io.threadforge.TaskPriority;
 import io.threadforge.Task;
 import io.threadforge.ThreadScope;
 
@@ -22,6 +23,8 @@ import java.time.Duration;
 
 try (ThreadScope scope = ThreadScope.open()
     .withFailurePolicy(FailurePolicy.FAIL_FAST)
+    .withScheduler(Scheduler.priority(8))
+    .withDefaultTaskPriority(TaskPriority.NORMAL)
     .withRetryPolicy(RetryPolicy.fixedDelay(3, Duration.ofMillis(50)))
     .withConcurrencyLimit(32)
     .withDeadline(Duration.ofSeconds(2))) {
@@ -39,6 +42,7 @@ try (ThreadScope scope = ThreadScope.open()
 - `scheduler = Scheduler.detect()`
 - `failurePolicy = FailurePolicy.FAIL_FAST`
 - `retryPolicy = RetryPolicy.noRetry()`
+- `defaultTaskPriority = TaskPriority.NORMAL`
 - `deadline = Duration.ofSeconds(30)`
 - 自动传播 `Context`（提交/调度时捕获，执行时恢复）
 - 作用域关闭时自动取消未完成任务和计划任务
@@ -73,6 +77,14 @@ try (ThreadScope scope = ThreadScope.open()
 - 参数：`retryPolicy != null`
 - 默认：`RetryPolicy.noRetry()`
 - 异常：同上（`NullPointerException` / `IllegalStateException`）
+
+### `ThreadScope withDefaultTaskPriority(TaskPriority taskPriority)`
+
+设置默认任务优先级。
+
+- 参数：`taskPriority != null`
+- 默认：`TaskPriority.NORMAL`
+- 说明：仅在 `Scheduler.priority(...)` 下会影响队列顺序
 
 ### `ThreadScope withConcurrencyLimit(int limit)`
 
@@ -133,6 +145,10 @@ try (ThreadScope scope = ThreadScope.open()
 
 获取当前重试策略。
 
+### `TaskPriority defaultTaskPriority()`
+
+获取默认任务优先级。
+
 ### `Duration deadline()`
 
 获取当前截止时间。
@@ -176,6 +192,14 @@ try (ThreadScope scope = ThreadScope.open()
   - 如果等待许可过程中超时，会抛 `ScopeTimeoutException`
   - 如果等待许可过程中被取消，会抛 `CancelledException`
   - 会自动传播提交线程中的 `Context`
+
+### `<T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority)`
+
+提交匿名任务，并指定优先级。
+
+### `<T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority)`
+
+提交具名任务，并指定优先级。
 
 ### `<T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)`
 

@@ -20,6 +20,7 @@
 - [[Dataflow-Channel]]
 - [[Control-FailurePolicy]]
 - [[Control-RetryPolicy]]
+- [[Control-TaskPriority]]
 - [[Control-Context]]
 - [[Control-CancellationToken]]
 - [[Observability-ThreadHook]]

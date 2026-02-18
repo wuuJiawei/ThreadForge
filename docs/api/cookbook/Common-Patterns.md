@@ -96,7 +96,20 @@ try (ThreadScope scope = ThreadScope.open()
 Context.clear();
 ```
 
-## 7. 生产者-消费者
+## 7. 任务优先级队列
+
+```java
+try (ThreadScope scope = ThreadScope.open()
+    .withScheduler(Scheduler.priority(4))) {
+
+    Task<Integer> low = scope.submit("low", () -> lowWork(), TaskPriority.LOW);
+    Task<Integer> high = scope.submit("high", () -> highWork(), TaskPriority.HIGH);
+
+    scope.await(low, high);
+}
+```
+
+## 8. 生产者-消费者
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -122,7 +135,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-## 8. 周期任务与取消
+## 9. 周期任务与取消
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -137,7 +150,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-## 9. try-with-resources + defer 资源清理
+## 10. try-with-resources + defer 资源清理
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {

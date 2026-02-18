@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +31,7 @@ class ThreadForgeCoreTest {
         try (ThreadScope scope = ThreadScope.open()) {
             assertEquals(FailurePolicy.FAIL_FAST, scope.failurePolicy());
             assertEquals(1, scope.retryPolicy().maxAttempts());
+            assertEquals(TaskPriority.NORMAL, scope.defaultTaskPriority());
             assertEquals(Duration.ofSeconds(30), scope.deadline());
             assertNotNull(scope.scheduler());
         }
@@ -388,6 +390,78 @@ class ThreadForgeCoreTest {
         Scheduler a = Scheduler.detect();
         Scheduler b = Scheduler.detect();
         assertSame(a, b);
+    }
+
+    @Test
+    void prioritySchedulerUsesPriorityQueue() {
+        Scheduler scheduler = Scheduler.priority(2);
+        try {
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) scheduler.executor();
+            assertEquals("priority(2)", scheduler.name());
+            assertTrue(executor.getQueue() instanceof java.util.concurrent.PriorityBlockingQueue);
+        } finally {
+            scheduler.shutdownIfOwned();
+        }
+    }
+
+    @Test
+    void highPriorityRunsBeforeLowPriorityWhenQueued() throws Exception {
+        final List<String> executionOrder = new CopyOnWriteArrayList<String>();
+        final CountDownLatch blockerStarted = new CountDownLatch(1);
+        final CountDownLatch releaseBlocker = new CountDownLatch(1);
+
+        try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.priority(1))) {
+            Task<Integer> blocker = scope.submit("blocker", new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    blockerStarted.countDown();
+                    releaseBlocker.await(1L, TimeUnit.SECONDS);
+                    executionOrder.add("blocker");
+                    return 0;
+                }
+            }, TaskPriority.NORMAL);
+            assertTrue(blockerStarted.await(1L, TimeUnit.SECONDS));
+
+            Task<Integer> low = scope.submit("low", new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    executionOrder.add("low");
+                    return 1;
+                }
+            }, TaskPriority.LOW);
+
+            Task<Integer> high = scope.submit("high", new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    executionOrder.add("high");
+                    return 2;
+                }
+            }, TaskPriority.HIGH);
+
+            releaseBlocker.countDown();
+            scope.await(blocker, low, high);
+
+            assertEquals(Arrays.asList("blocker", "high", "low"), executionOrder);
+            assertEquals(Integer.valueOf(2), high.await());
+            assertEquals(Integer.valueOf(1), low.await());
+        }
+    }
+
+    @Test
+    void defaultTaskPriorityCanBeConfigured() {
+        try (ThreadScope scope = ThreadScope.open()
+            .withScheduler(Scheduler.priority(1))
+            .withDefaultTaskPriority(TaskPriority.HIGH)) {
+            assertEquals(TaskPriority.HIGH, scope.defaultTaskPriority());
+
+            Task<Integer> task = scope.submit(new java.util.concurrent.Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    return 7;
+                }
+            });
+            assertEquals(Integer.valueOf(7), task.await());
+        }
     }
 
     @Test

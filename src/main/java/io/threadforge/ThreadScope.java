@@ -69,6 +69,7 @@ public final class ThreadScope implements AutoCloseable {
     private volatile Scheduler scheduler;
     private volatile FailurePolicy failurePolicy;
     private volatile RetryPolicy retryPolicy;
+    private volatile TaskPriority defaultTaskPriority;
     private volatile Duration deadline;
     private volatile ThreadHook hook;
     private volatile Semaphore concurrencySemaphore;
@@ -95,6 +96,7 @@ public final class ThreadScope implements AutoCloseable {
         this.scheduler = Scheduler.detect();
         this.failurePolicy = FailurePolicy.FAIL_FAST;
         this.retryPolicy = RetryPolicy.noRetry();
+        this.defaultTaskPriority = TaskPriority.NORMAL;
         this.deadline = DEFAULT_DEADLINE;
         this.hook = NOOP_HOOK;
         this.delayScheduler = DelayScheduler.shared();
@@ -166,6 +168,18 @@ public final class ThreadScope implements AutoCloseable {
         Objects.requireNonNull(retryPolicy, "retryPolicy");
         ensureConfigurable();
         this.retryPolicy = retryPolicy;
+        return this;
+    }
+
+    /**
+     * 设置默认任务优先级。
+     *
+     * <p>仅在优先级调度器（如 {@link Scheduler#priority(int)}）中会影响队列顺序。
+     */
+    public ThreadScope withDefaultTaskPriority(TaskPriority taskPriority) {
+        Objects.requireNonNull(taskPriority, "taskPriority");
+        ensureConfigurable();
+        this.defaultTaskPriority = taskPriority;
         return this;
     }
 
@@ -268,6 +282,13 @@ public final class ThreadScope implements AutoCloseable {
     }
 
     /**
+     * 获取默认任务优先级。
+     */
+    public TaskPriority defaultTaskPriority() {
+        return defaultTaskPriority;
+    }
+
+    /**
      * 获取当前 deadline 配置。
      */
     public Duration deadline() {
@@ -323,7 +344,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, retryPolicy, null, id);
+        return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
     /**
@@ -336,7 +357,23 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, retryPolicy, null, id);
+        return submit(name, callable, defaultTaskPriority, retryPolicy, null, id);
+    }
+
+    /**
+     * 提交匿名任务，并指定优先级。
+     */
+    public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, taskPriority, retryPolicy, null, id);
+    }
+
+    /**
+     * 提交具名任务，并指定优先级。
+     */
+    public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, taskPriority, retryPolicy, null, id);
     }
 
     /**
@@ -344,7 +381,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, retryPolicy, null, id);
+        return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
     /**
@@ -352,7 +389,23 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, retryPolicy, null, id);
+        return submit(name, callable, defaultTaskPriority, retryPolicy, null, id);
+    }
+
+    /**
+     * 提交匿名任务，并同时指定优先级与重试策略。
+     */
+    public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority, RetryPolicy retryPolicy) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, taskPriority, retryPolicy, null, id);
+    }
+
+    /**
+     * 提交具名任务，并同时指定优先级与重试策略。
+     */
+    public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority, RetryPolicy retryPolicy) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, taskPriority, retryPolicy, null, id);
     }
 
     /**
@@ -360,7 +413,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable, Duration timeout) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, retryPolicy, timeout, id);
+        return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, timeout, id);
     }
 
     /**
@@ -368,7 +421,23 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable, Duration timeout) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, retryPolicy, timeout, id);
+        return submit(name, callable, defaultTaskPriority, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交匿名任务，并同时指定优先级与任务级超时。
+     */
+    public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority, Duration timeout) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, taskPriority, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交具名任务，并同时指定优先级与任务级超时。
+     */
+    public <T> Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority, Duration timeout) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, taskPriority, retryPolicy, timeout, id);
     }
 
     /**
@@ -376,7 +445,7 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy, Duration timeout) {
         long id = taskIdGen.getAndIncrement();
-        return submit("task-" + id, callable, retryPolicy, timeout, id);
+        return submit("task-" + id, callable, defaultTaskPriority, retryPolicy, timeout, id);
     }
 
     /**
@@ -384,7 +453,34 @@ public final class ThreadScope implements AutoCloseable {
      */
     public <T> Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout) {
         long id = taskIdGen.getAndIncrement();
-        return submit(name, callable, retryPolicy, timeout, id);
+        return submit(name, callable, defaultTaskPriority, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交匿名任务，同时指定优先级、重试策略和任务级超时。
+     */
+    public <T> Task<T> submit(
+        Callable<T> callable,
+        TaskPriority taskPriority,
+        RetryPolicy retryPolicy,
+        Duration timeout
+    ) {
+        long id = taskIdGen.getAndIncrement();
+        return submit("task-" + id, callable, taskPriority, retryPolicy, timeout, id);
+    }
+
+    /**
+     * 提交具名任务，同时指定优先级、重试策略和任务级超时。
+     */
+    public <T> Task<T> submit(
+        String name,
+        Callable<T> callable,
+        TaskPriority taskPriority,
+        RetryPolicy retryPolicy,
+        Duration timeout
+    ) {
+        long id = taskIdGen.getAndIncrement();
+        return submit(name, callable, taskPriority, retryPolicy, timeout, id);
     }
 
     /**
@@ -710,12 +806,14 @@ public final class ThreadScope implements AutoCloseable {
     private <T> Task<T> submit(
         String name,
         final Callable<T> callable,
+        TaskPriority taskPriority,
         RetryPolicy retryPolicy,
         Duration timeout,
         long id
     ) {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(callable, "callable");
+        Objects.requireNonNull(taskPriority, "taskPriority");
         Objects.requireNonNull(retryPolicy, "retryPolicy");
         validateTaskTimeout(timeout);
         lockConfiguration();
@@ -743,7 +841,7 @@ public final class ThreadScope implements AutoCloseable {
         });
 
         try {
-            scheduler.executor().execute(new Runnable() {
+            scheduler.executor().execute(Scheduler.prioritized(new Runnable() {
                 @Override
                 public void run() {
                     Context.Snapshot previous = Context.install(contextSnapshot);
@@ -755,7 +853,7 @@ public final class ThreadScope implements AutoCloseable {
                         Context.restore(previous);
                     }
                 }
-            });
+            }, taskPriority, id));
         } catch (RejectedExecutionException rejectedExecutionException) {
             if (permitAcquired && semaphore != null) {
                 semaphore.release();

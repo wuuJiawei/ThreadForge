@@ -45,6 +45,7 @@ ThreadForge 的目标是把这些分散的并发控制点收敛到一个可推�
 - 任务句柄：`Task<T>`
 - 失败策略：`FailurePolicy`
 - 失败重试策略：`RetryPolicy`
+- 任务优先级：`TaskPriority`
 - 协作式取消：`CancellationToken`
 - 上下文传播：`Context`
 - 有界通道：`Channel<T>`
@@ -88,9 +89,10 @@ implementation("pub.lighting:threadforge-core:1.0.2")
 
 ```java
 ThreadScope.open()
-    .withScheduler(Scheduler.detect())
+    .withScheduler(Scheduler.priority(8))
     .withFailurePolicy(FailurePolicy.FAIL_FAST)
     .withRetryPolicy(RetryPolicy.noRetry())
+    .withDefaultTaskPriority(TaskPriority.NORMAL)
     .withOpenTelemetry()
     .withConcurrencyLimit(32)
     .withDeadline(Duration.ofSeconds(30))
@@ -102,6 +104,8 @@ ThreadScope.open()
 ```java
 Task<T> submit(Callable<T> callable)
 Task<T> submit(String name, Callable<T> callable)
+Task<T> submit(Callable<T> callable, TaskPriority taskPriority)
+Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority)
 Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)
 Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy)
 Task<T> submit(Callable<T> callable, Duration timeout)
@@ -129,6 +133,12 @@ ScheduledTask schedule(Duration delay, Callable<T> callable)
 ScheduledTask schedule(Duration delay, Runnable runnable)
 ScheduledTask scheduleAtFixedRate(Duration initial, Duration period, Runnable runnable)
 ScheduledTask scheduleWithFixedDelay(Duration initial, Duration delay, Runnable runnable)
+```
+
+优先级调度器：
+
+```java
+Scheduler.priority(int size)
 ```
 
 清理回调：
@@ -169,6 +179,17 @@ CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> fn)
 - `RetryPolicy.attempts(n)`：最多执行 `n` 次（不含延迟）
 - `RetryPolicy.fixedDelay(n, delay)`：固定间隔重试
 - `RetryPolicy.exponentialBackoff(n, initial, multiplier, max)`：指数退避
+
+### TaskPriority
+
+- `TaskPriority.HIGH`
+- `TaskPriority.NORMAL`
+- `TaskPriority.LOW`
+
+说明：
+- 配合 `Scheduler.priority(...)` 使用时，队列会优先执行高优先级任务
+- 同优先级按提交顺序执行（FIFO）
+- 在非优先级调度器下可正常运行，但不保证严格优先级顺序
 
 ### Context
 
@@ -305,7 +326,20 @@ try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.fixed(4))) {
 }
 ```
 
-### 7. 生产者-消费者
+### 7. 优先级队列
+
+```java
+try (ThreadScope scope = ThreadScope.open()
+    .withScheduler(Scheduler.priority(4))) {
+
+    Task<Integer> low = scope.submit("low", () -> doLow(), TaskPriority.LOW);
+    Task<Integer> high = scope.submit("high", () -> doHigh(), TaskPriority.HIGH);
+
+    scope.await(low, high);
+}
+```
+
+### 8. 生产者-消费者
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -331,7 +365,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 8. 延迟与周期任务
+### 9. 延迟与周期任务
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -348,7 +382,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 9. 组合式写法
+### 10. 组合式写法
 
 ```java
 try (ThreadScope scope = ThreadScope.open()) {
@@ -362,7 +396,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 }
 ```
 
-### 10. OpenTelemetry 追踪
+### 11. OpenTelemetry 追踪
 
 ```java
 try (ThreadScope scope = ThreadScope.open()
@@ -373,7 +407,7 @@ try (ThreadScope scope = ThreadScope.open()
 }
 ```
 
-### 11. 失败自动重试
+### 12. 失败自动重试
 
 ```java
 try (ThreadScope scope = ThreadScope.open()

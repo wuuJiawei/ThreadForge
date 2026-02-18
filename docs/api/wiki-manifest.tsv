@@ -9,6 +9,7 @@ Runtime	Runtime-ScheduledTask	runtime/ScheduledTask.md
 Dataflow	Dataflow-Channel	dataflow/Channel.md
 Control	Control-FailurePolicy	control/FailurePolicy.md
 Control	Control-RetryPolicy	control/RetryPolicy.md
+Control	Control-TaskPriority	control/TaskPriority.md
 Control	Control-Context	control/Context.md
 Control	Control-CancellationToken	control/CancellationToken.md
 Observability	Observability-ThreadHook	observability/ThreadHook.md

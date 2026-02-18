@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -76,6 +77,28 @@ public final class Scheduler {
         );
         executor.allowCoreThreadTimeOut(true);
         return new Scheduler(executor, true, "fixed(" + size + ")", false);
+    }
+
+    /**
+     * 创建支持优先级队列的固定大小线程池调度器。
+     *
+     * <p>仅当任务以 {@link PrioritizedRunnable} 提交时生效（ThreadScope 会自动处理）。
+     */
+    public static Scheduler priority(int size) {
+        if (size <= 0) {
+            throw new IllegalArgumentException("size must be > 0");
+        }
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+            size,
+            size,
+            60L,
+            TimeUnit.SECONDS,
+            new PriorityBlockingQueue<Runnable>(),
+            new NamedThreadFactory("threadforge-priority"),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        executor.allowCoreThreadTimeOut(true);
+        return new Scheduler(executor, true, "priority(" + size + ")", false);
     }
 
     /**
@@ -172,6 +195,10 @@ public final class Scheduler {
         }
     }
 
+    static Runnable prioritized(Runnable runnable, TaskPriority taskPriority, long sequence) {
+        return new PrioritizedRunnable(runnable, taskPriority, sequence);
+    }
+
     /**
      * 尝试通过反射创建虚拟线程执行器。
      */
@@ -213,6 +240,32 @@ public final class Scheduler {
             Thread thread = new Thread(runnable, prefix + "-" + id.getAndIncrement());
             thread.setDaemon(true);
             return thread;
+        }
+    }
+
+    private static final class PrioritizedRunnable implements Runnable, Comparable<PrioritizedRunnable> {
+        private final Runnable delegate;
+        private final TaskPriority taskPriority;
+        private final long sequence;
+
+        private PrioritizedRunnable(Runnable delegate, TaskPriority taskPriority, long sequence) {
+            this.delegate = delegate;
+            this.taskPriority = taskPriority;
+            this.sequence = sequence;
+        }
+
+        @Override
+        public void run() {
+            delegate.run();
+        }
+
+        @Override
+        public int compareTo(PrioritizedRunnable other) {
+            int byPriority = Integer.compare(this.taskPriority.rank(), other.taskPriority.rank());
+            if (byPriority != 0) {
+                return byPriority;
+            }
+            return Long.compare(this.sequence, other.sequence);
         }
     }
 }

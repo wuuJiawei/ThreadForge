@@ -73,14 +73,14 @@ Maven:
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```gradle
-implementation("pub.lighting:threadforge-core:1.0.2")
+implementation("pub.lighting:threadforge-core:1.1.0")
 ```
 
 ## 核心 API

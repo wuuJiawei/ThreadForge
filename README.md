@@ -4,6 +4,17 @@
 [![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
 
+## 更新日志
+
+- 完整更新记录：[`CHANGELOG.md`](./CHANGELOG.md)
+- 最新版本：`v1.1.0`（2026-02-19）
+- 最新版本摘要（v1.1.0）：
+1. 新增 `RetryPolicy`（支持 scope 默认重试与任务级覆盖）
+2. 新增任务级超时（`Per-Task Timeout` / `TaskTimeoutException`）
+3. 新增上下文传播（平台线程与虚拟线程）
+4. 新增 OpenTelemetry 集成（`withOpenTelemetry(...)`）
+5. 新增任务优先级调度（`TaskPriority` + `Scheduler.priority(...)`）
+
 
 ThreadForge 是一个减少多线程心智负担的结构化并发框架，目标是让并发代码更简单、更安全、更可观测。
 

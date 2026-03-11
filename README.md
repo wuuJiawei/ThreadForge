@@ -73,14 +73,14 @@ Maven:
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2</version>
 </dependency>
 ```
 
 Gradle:
 
 ```gradle
-implementation("pub.lighting:threadforge-core:1.1.1")
+implementation("pub.lighting:threadforge-core:1.1.2")
 ```
 
 ## 兼容性与构建
@@ -467,9 +467,18 @@ mvn verify
 
 项目已启用 JaCoCo 覆盖率门禁：`LINE >= 80%`。
 
+## Release 流程
+
+- release tag 格式固定为 `vX.Y.Z`，例如 `v1.1.2`
+- `release.yml` 只接受 `main` 或 `master` 历史中的 tag commit，并要求 tag 版本与 `pom.xml` 中的 `project.version` 一致
+- push tag 后会自动执行：`clean verify`、`-P release deploy`、生成 release notes、创建 GitHub Release 并上传 jar 资产
+- 自动 release notes 基于 git commit 历史生成，分类为 `Features`、`Improvements`、`Fixes`、`Docs`、`Build / CI`
+- 维护者操作说明与 secrets 清单见 [`docs/releases.md`](./docs/releases.md)
+
 ## 更新日志
 
 - 完整更新记录：[`CHANGELOG.md`](./CHANGELOG.md)
+- 维护者发版手册：[`docs/releases.md`](./docs/releases.md)
 
 
 ## API 文档与 GitHub Wiki

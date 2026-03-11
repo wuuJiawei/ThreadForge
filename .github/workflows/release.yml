@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    env:
+      CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+      CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Temurin JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_TOKEN_USERNAME
+          server-password: CENTRAL_TOKEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Validate tag format and project version
+        run: |
+          set -euo pipefail
+
+          if ! printf '%s\n' "${RELEASE_TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Release tag must match vX.Y.Z. Got: ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+
+          release_version="${RELEASE_TAG#v}"
+          pom_version="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1)"
+
+          if [ "${pom_version}" != "${release_version}" ]; then
+            echo "Tag version ${release_version} does not match pom.xml version ${pom_version}." >&2
+            exit 1
+          fi
+
+          echo "RELEASE_VERSION=${release_version}" >> "${GITHUB_ENV}"
+
+      - name: Ensure tag commit belongs to main or master
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main || true
+          git fetch --no-tags origin +refs/heads/master:refs/remotes/origin/master || true
+
+          release_sha="$(git rev-list -n 1 "${RELEASE_TAG}")"
+          release_branch=""
+
+          for branch in main master; do
+            if git show-ref --verify --quiet "refs/remotes/origin/${branch}" && \
+               git merge-base --is-ancestor "${release_sha}" "refs/remotes/origin/${branch}"; then
+              release_branch="${branch}"
+              break
+            fi
+          done
+
+          if [ -z "${release_branch}" ]; then
+            echo "Release tag ${RELEASE_TAG} must point to a commit reachable from origin/main or origin/master." >&2
+            exit 1
+          fi
+
+          echo "RELEASE_BRANCH=${release_branch}" >> "${GITHUB_ENV}"
+
+      - name: Resolve imported GPG key id
+        run: |
+          set -euo pipefail
+
+          key_id="$(gpg --list-secret-keys --keyid-format LONG | awk '/^sec/{split($2, parts, "/"); print parts[2]; exit}')"
+          if [ -z "${key_id}" ]; then
+            echo "Unable to resolve imported GPG key id." >&2
+            exit 1
+          fi
+
+          echo "GPG_KEY_ID=${key_id}" >> "${GITHUB_ENV}"
+
+      - name: Verify release build
+        run: mvn -B -ntp clean verify
+
+      - name: Generate release notes
+        run: ./scripts/generate-release-notes.sh "${RELEASE_TAG}" "https://github.com/${GITHUB_REPOSITORY}" > release-notes.md
+
+      - name: Publish to Maven Central
+        run: mvn -B -ntp -P release -DskipTests -Dgpg.keyname="${GPG_KEY_ID}" deploy
+
+      - name: Upload release artifacts for diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            release-notes.md
+            target/*.jar
+            target/*.asc
+            target/central-publishing/**
+          if-no-files-found: warn
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          assets=(target/*.jar target/*.asc)
+
+          gh release create "${RELEASE_TAG}" "${assets[@]}" \
+            --verify-tag \
+            --fail-on-no-commits \
+            --latest \
+            --title "${RELEASE_TAG}" \
+            --notes-file release-notes.md

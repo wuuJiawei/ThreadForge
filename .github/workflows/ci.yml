@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify on JDK ${{ matrix.java }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ["8", "11", "17", "21"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Temurin JDK ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Build, test, and run coverage checks
+        run: mvn -B -ntp clean verify
+
+      - name: Upload packaged jar and JaCoCo report
+        if: matrix.java == '21'
+        uses: actions/upload-artifact@v4
+        with:
+          name: threadforge-core-jdk21-${{ github.sha }}
+          path: |
+            target/*.jar
+            target/site/jacoco/**
+          if-no-files-found: error

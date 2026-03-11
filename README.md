@@ -1,20 +1,9 @@
 # ThreadForge
 
 [![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![CI](https://github.com/wuuJiawei/ThreadForge/actions/workflows/ci.yml/badge.svg)](https://github.com/wuuJiawei/ThreadForge/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
-
-## 更新日志
-
-- 完整更新记录：[`CHANGELOG.md`](./CHANGELOG.md)
-- 最新版本：`v1.1.0`（2026-02-19）
-- 最新版本摘要（v1.1.0）：
-1. 新增 `RetryPolicy`（支持 scope 默认重试与任务级覆盖）
-2. 新增任务级超时（`Per-Task Timeout` / `TaskTimeoutException`）
-3. 新增上下文传播（平台线程与虚拟线程）
-4. 新增 OpenTelemetry 集成（`withOpenTelemetry(...)`）
-5. 新增任务优先级调度（`TaskPriority` + `Scheduler.priority(...)`）
-
 
 ThreadForge 是一个减少多线程心智负担的结构化并发框架，目标是让并发代码更简单、更安全、更可观测。
 
@@ -84,14 +73,48 @@ Maven:
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
 Gradle:
 
 ```gradle
-implementation("pub.lighting:threadforge-core:1.1.0")
+implementation("pub.lighting:threadforge-core:1.1.1")
+```
+
+## 兼容性与构建
+
+| JDK | 运行支持 | CI 验证 | 说明 |
+|---|---|---|---|
+| 8 | Yes | Yes | 最低支持版本，产物字节码目标保持为 Java 8 |
+| 11 | Yes | Yes | 推荐的本地开发/构建基线 |
+| 17 | Yes | Yes | LTS 版本兼容性验证 |
+| 21 | Yes | Yes | LTS 版本兼容性验证；运行时优先虚拟线程 |
+
+- 最低支持 Java 版本：`Java 8`
+- Maven 构建默认使用 `maven-compiler-plugin` 的 `release=8`，在较新 JDK 上生成 Java 8 兼容产物
+- GitHub Actions CI 会在 JDK `8 / 11 / 17 / 21` 上执行 `mvn -B -ntp clean verify`
+
+### 本地构建
+
+常规验证：
+
+```bash
+mvn -B -ntp clean verify
+```
+
+在指定 JDK 下验证 Java 8 兼容目标：
+
+```bash
+JAVA_HOME=/path/to/jdk8 PATH="$JAVA_HOME/bin:$PATH" mvn -B -ntp clean verify
+JAVA_HOME=/path/to/jdk21 PATH="$JAVA_HOME/bin:$PATH" mvn -B -ntp clean verify
+```
+
+发布前的本地检查：
+
+```bash
+mvn -B -ntp -P release clean verify
 ```
 
 ## 核心 API
@@ -443,6 +466,11 @@ mvn verify
 ```
 
 项目已启用 JaCoCo 覆盖率门禁：`LINE >= 80%`。
+
+## 更新日志
+
+- 完整更新记录：[`CHANGELOG.md`](./CHANGELOG.md)
+
 
 ## API 文档与 GitHub Wiki
 

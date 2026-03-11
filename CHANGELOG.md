@@ -4,6 +4,13 @@
 
 规则：按时间倒序记录（最新版本在最上方）。
 
+## [1.1.1] - 2026-03-11
+
+1. 升级 `maven-compiler-plugin`、`maven-surefire-plugin`、`maven-javadoc-plugin`、`maven-gpg-plugin` 与 `central-publishing-maven-plugin`，并将 `junit-jupiter` 升级到更稳妥的小版本带。
+2. Maven 编译配置收口到 Java 8 `release` 目标，在较新 JDK 上构建时保持 Java 8 兼容产物。
+3. 新增 GitHub Actions CI matrix，覆盖 JDK `8 / 11 / 17 / 21`，并在矩阵中执行 `clean verify` 与覆盖率检查。
+4. README 补充兼容性矩阵、本地构建说明与最低支持 Java 版本说明。
+
 ## [1.1.0] - 2026-02-19
 
 1. 新增 `RetryPolicy`：支持 scope 默认重试与任务级重试覆盖，可直接通过 `ThreadScope.submit(...)` 配置失败重试。

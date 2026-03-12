@@ -22,6 +22,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -200,7 +201,15 @@ class CoreCoverageTest {
                 }
             });
             assertTrue(callableRan.await(1L, TimeUnit.SECONDS));
-            assertTrue(callableTask.isDone());
+            // callableRan only proves the Callable body has executed.
+            // ScheduledFuture#isDone may flip slightly later on some JDKs/runtimes,
+            // so poll briefly instead of asserting an instantaneous state transition.
+            assertEventuallyTrue(new BooleanSupplier() {
+                @Override
+                public boolean getAsBoolean() {
+                    return callableTask.isDone();
+                }
+            }, 1000L);
 
             final AtomicInteger ticks = new AtomicInteger();
             ScheduledTask periodic = scheduler.scheduleWithFixedDelay(
@@ -223,6 +232,17 @@ class CoreCoverageTest {
         } finally {
             scheduler.shutdownIfOwned();
         }
+    }
+
+    private static void assertEventuallyTrue(BooleanSupplier condition, long timeoutMillis) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+        while (System.nanoTime() < deadline) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            Thread.sleep(10L);
+        }
+        assertTrue(condition.getAsBoolean());
     }
 
     @Test

@@ -17,9 +17,6 @@ jobs:
     name: Publish ${{ github.ref_name }}
     runs-on: ubuntu-latest
     env:
-      CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
-      CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
-      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - name: Checkout repository
@@ -33,11 +30,6 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-          server-id: central
-          server-username: CENTRAL_TOKEN_USERNAME
-          server-password: CENTRAL_TOKEN_PASSWORD
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: GPG_PASSPHRASE
 
       - name: Validate tag format and project version
         run: |
@@ -83,26 +75,11 @@ jobs:
 
           echo "RELEASE_BRANCH=${release_branch}" >> "${GITHUB_ENV}"
 
-      - name: Resolve imported GPG key id
-        run: |
-          set -euo pipefail
-
-          key_id="$(gpg --list-secret-keys --keyid-format LONG | awk '/^sec/{split($2, parts, "/"); print parts[2]; exit}')"
-          if [ -z "${key_id}" ]; then
-            echo "Unable to resolve imported GPG key id." >&2
-            exit 1
-          fi
-
-          echo "GPG_KEY_ID=${key_id}" >> "${GITHUB_ENV}"
-
       - name: Verify release build
         run: mvn -B -ntp clean verify
 
       - name: Generate release notes
         run: ./scripts/generate-release-notes.sh "${RELEASE_TAG}" "https://github.com/${GITHUB_REPOSITORY}" > release-notes.md
-
-      - name: Publish to Maven Central
-        run: mvn -B -ntp -P release -DskipTests -Dgpg.keyname="${GPG_KEY_ID}" deploy
 
       - name: Upload release artifacts for diagnostics
         if: always()
@@ -112,8 +89,6 @@ jobs:
           path: |
             release-notes.md
             target/*.jar
-            target/*.asc
-            target/central-publishing/**
           if-no-files-found: warn
 
       - name: Publish GitHub Release
@@ -123,7 +98,7 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
 
-          assets=(target/*.jar target/*.asc)
+          assets=(target/*.jar)
 
           gh release create "${RELEASE_TAG}" "${assets[@]}" \
             --verify-tag \

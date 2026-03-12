@@ -1,9 +1,12 @@
 # ThreadForge
 
 [![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
+[![Changelog](https://img.shields.io/badge/Changelog-v1.1.2-0ea5e9)](./CHANGELOG.md)
 [![CI](https://github.com/wuuJiawei/ThreadForge/actions/workflows/ci.yml/badge.svg)](https://github.com/wuuJiawei/ThreadForge/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
+
+最新版本变更可直接查看 [`CHANGELOG.md`](./CHANGELOG.md)。
 
 ThreadForge 是一个减少多线程心智负担的结构化并发框架，目标是让并发代码更简单、更安全、更可观测。
 
@@ -471,9 +474,11 @@ mvn verify
 
 - release tag 格式固定为 `vX.Y.Z`，例如 `v1.1.2`
 - `release.yml` 只接受 `main` 或 `master` 历史中的 tag commit，并要求 tag 版本与 `pom.xml` 中的 `project.version` 一致
-- push tag 后会自动执行：`clean verify`、`-P release deploy`、生成 release notes、创建 GitHub Release 并上传 jar 资产
+- 真实发版顺序是：先在本地执行 `mvn -B -ntp -P release clean deploy` 发布到 Maven Central，再 push 对应 tag 创建 GitHub Release
+- push tag 后会自动执行：`clean verify`、生成 release notes、创建 GitHub Release 并上传 jar 资产
 - 自动 release notes 基于 git commit 历史生成，分类为 `Features`、`Improvements`、`Fixes`、`Docs`、`Build / CI`
-- 维护者操作说明与 secrets 清单见 [`docs/releases.md`](./docs/releases.md)
+- Maven Central 发布保持本地手动执行，不经过 GitHub Actions
+- 维护者操作说明见 [`docs/releases.md`](./docs/releases.md)
 
 ## 更新日志
 

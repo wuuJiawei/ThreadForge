@@ -6,10 +6,10 @@
 
 ## [1.1.2] - 2026-03-11
 
-1. 新增 tag 驱动的 GitHub Actions `release.yml`，在 `vX.Y.Z` tag 推送后自动执行构建、测试、Maven Central 发布与 GitHub Release 创建。
+1. 新增 tag 驱动的 GitHub Actions `release.yml`，在 `vX.Y.Z` tag 推送后自动执行构建、测试、GitHub Release 创建与 changelog 注入。
 2. 新增 `scripts/generate-release-notes.sh`，基于 git log 自动生成 release notes，并按 `Features / Improvements / Fixes / Docs / Build / CI` 分类整理。
-3. README 与维护者文档补充 release 流程、tag 规则、必需 secrets 以及 commit message 分类约定。
-4. 统一仓库内公开文档版本标识到 `1.1.2`，为后续 `v1.1.2` tag 发版做准备。
+3. README 与维护者文档补充 release 流程、tag 规则、本地 Central 发布说明以及 commit message 分类约定。
+4. 统一仓库内公开文档版本标识到 `1.1.2`，为后续 tag 发版做准备。
 
 ## [1.1.1] - 2026-03-11
 

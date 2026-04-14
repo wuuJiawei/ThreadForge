@@ -1,0 +1,98 @@
+---
+description: "ThreadForge structured concurrency framework for Java. API patterns, common mistakes, and migration guidance."
+globs: ["**/*.java"]
+alwaysApply: false
+---
+
+# ThreadForge — Structured Concurrency for Java
+
+ThreadForge is a structured concurrency framework (package `io.threadforge`, `pub.lighting:threadforge-core`) that scopes all tasks under `ThreadScope` with bounded lifecycle, automatic cancellation, and unified failure semantics.
+
+## Core Pattern
+
+```java
+import io.threadforge.*;
+
+try (ThreadScope scope = ThreadScope.open()
+    .withFailurePolicy(FailurePolicy.FAIL_FAST)
+    .withDeadline(Duration.ofSeconds(2))) {
+    Task<String> a = scope.submit("rpc-a", () -> fetchA());
+    Task<String> b = scope.submit("rpc-b", () -> fetchB());
+    scope.await(a, b);
+    return a.await() + b.await();
+}
+```
+
+## Key Rules
+
+1. **Always use try-with-resources** for `ThreadScope` — `scope.close()` cancels unfinished tasks
+2. **Configure before submit** — `with*` methods lock after the first `submit()` or `schedule()` call
+3. **Default deadline is 30s** — override with `.withDeadline()` or per-task `Duration` timeout
+4. **Default failure policy is `FAIL_FAST`** — first failure cancels remaining tasks and throws
+
+## FailurePolicy
+
+| Policy | Behavior |
+|---|---|
+| `FAIL_FAST` | First failure throws, cancel remaining |
+| `COLLECT_ALL` | Wait all, throw `AggregateException` if any failed |
+| `SUPERVISOR` | Never auto-cancel; failures in `Outcome` |
+| `CANCEL_OTHERS` | Cancel siblings on failure, don't throw |
+| `IGNORE_ALL` | Ignore failures, return Outcome without them |
+
+## Scheduler Options
+
+```java
+Scheduler.detect()              // Auto: virtual threads on JDK 21+, common pool otherwise
+Scheduler.fixed(8)              // Fixed pool, scope owns
+Scheduler.priority(4)           // Priority queue pool (use with TaskPriority)
+Scheduler.virtualThreads()      // Explicit virtual threads
+Scheduler.from(executorService) // Wrap external executor
+```
+
+## RetryPolicy
+
+```java
+RetryPolicy.noRetry()                                      // Default
+RetryPolicy.fixedDelay(3, Duration.ofMillis(50))           // 3 attempts, 50ms gap
+RetryPolicy.exponentialBackoff(3, initial, 2.0, maxDelay)  // Exponential backoff
+```
+
+Note: `maxAttempts` includes the first attempt (3 = 1 initial + 2 retries).
+
+## Context Propagation
+
+ThreadForge auto-propagates `Context` (ThreadLocal-based) at submit time:
+
+```java
+Context.put("traceId", "req-1001");
+// Inside any task submitted to the same scope:
+String id = Context.get("traceId"); // "req-1001"
+```
+
+## Exceptions
+
+| Exception | Trigger |
+|---|---|
+| `ScopeTimeoutException` | Scope deadline exceeded |
+| `TaskTimeoutException` | Per-task timeout exceeded |
+| `CancelledException` | Task cancelled or interrupted |
+| `AggregateException` | `COLLECT_ALL` with multiple failures |
+| `TaskExecutionException` | Wraps checked exceptions from tasks |
+
+## Common Mistakes
+
+- Calling `with*` after first `submit()` — configuration is locked
+- Using `task.await()` outside scope — blocks forever or throws
+- Not using try-with-resources — scope won't auto-close
+- Confusing `maxAttempts` with retry count — 3 = 1 initial + 2 retries
+- Ignoring `Outcome.hasFailures()` with `SUPERVISOR` or `COLLECT_ALL`
+
+## Migration from java.util.concurrent
+
+- `ExecutorService.submit()` → `scope.submit()`
+- `CompletableFuture.get()` → `task.await()`
+- `CompletableFuture.allOf()` → `scope.awaitAll(tasks)`
+- `shutdownNow()` → `scope.close()` (try-with-resources)
+- Manual retry loops → `RetryPolicy`
+- Manual timeout → `withDeadline()` or per-task `Duration`

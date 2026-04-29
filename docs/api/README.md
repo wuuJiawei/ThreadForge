@@ -45,6 +45,8 @@
 - [Control / CancellationToken](control/CancellationToken.md)
 - [Observability / ThreadHook](observability/ThreadHook.md)
 - [Observability / OpenTelemetryHook](observability/OpenTelemetryHook.md)
+- [Observability / SlowTaskHook](observability/SlowTaskHook.md)
+- [Observability / SlowTaskEvent](observability/SlowTaskEvent.md)
 - [Observability / TaskInfo](observability/TaskInfo.md)
 - [Observability / ScopeMetricsSnapshot](observability/ScopeMetricsSnapshot.md)
 - [Errors / Exceptions](errors/Exceptions.md)
@@ -77,11 +79,12 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 上下文传播：`Context`
 - 协作式取消：`CancellationToken`
 - 生命周期观测：`ThreadHook` + `TaskInfo`
+- 慢任务诊断：`SlowTaskHook` + `SlowTaskEvent`
 - OpenTelemetry 追踪：`withOpenTelemetry(...)` + `OpenTelemetryHook`
 - 内置指标快照：`ScopeMetricsSnapshot`
 - 语义异常：`CancelledException` / `ScopeTimeoutException` / `TaskTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
 
-当前尚未发布但已在 roadmap 中规划的能力包括官方 examples/benchmarks，以及 Micrometer / MDC 集成。
+当前尚未发布但已在 roadmap 中规划的能力主要是 Spring 之外的更高层 observability 扩展和后续集成文档完善。
 
 ## JDK 兼容性
 

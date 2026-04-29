@@ -1,0 +1,44 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>pub.lighting</groupId>
+    <artifactId>threadforge-slf4j</artifactId>
+    <version>1.1.2</version>
+    <name>ThreadForge SLF4J Integration</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>8</maven.compiler.release>
+        <threadforge.version>1.1.2</threadforge.version>
+        <slf4j.version>2.0.16</slf4j.version>
+        <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>pub.lighting</groupId>
+            <artifactId>threadforge-core</artifactId>
+            <version>${threadforge.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

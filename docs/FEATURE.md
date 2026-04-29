@@ -38,12 +38,12 @@ The following capability is implemented on the `main` branch and is planned for 
 |---|---|---|
 | Higher-order orchestration | first-success, quorum, and hedged fan-in | `JoinStrategy`, `ScopeJoiner`, `ThreadScope.join(...)` |
 | Adoption assets | runnable examples and JMH benchmarks | `examples/`, `benchmarks/` |
+| Observability ecosystem | slow-task hook, Micrometer, SLF4J / MDC bridge | `SlowTaskHook`, `SlowTaskEvent`, `integrations/` |
 
 ## Current Gaps
 
 These are the main product gaps today:
 
-- no Micrometer or MDC/SLF4J integration module yet
 - no dedicated Spring Boot starter yet
 
 ## Active Next Features
@@ -53,7 +53,6 @@ The roadmap is tracked in [`docs/ROADMAP.md`](./ROADMAP.md). The next planned fe
 | Priority | Branch | Theme | Planned Outcome |
 |---|---|---|---|
 | P0 | `feature/docs-governance-onboarding` | Docs governance + onboarding | clearer README, human install guide, AI install guide |
-| P1 | `feature/observability-ecosystem` | Observability ecosystem | Micrometer, MDC/SLF4J bridge, slow-task diagnostics |
 
 ## Explicitly Deferred
 

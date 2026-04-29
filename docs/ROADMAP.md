@@ -17,7 +17,6 @@
 | Branch | Theme | Priority | Purpose |
 |---|---|---:|---|
 | `feature/docs-governance-onboarding` | Docs governance + onboarding | P0 | Unify repo messaging and improve first-run experience for humans and AI tools |
-| `feature/observability-ecosystem` | Observability ecosystem | P1 | Extend beyond OTel with Micrometer, MDC propagation, and slow-task diagnostics |
 
 ## Delivered On Main
 
@@ -25,6 +24,7 @@
 |---|---|---|
 | `feature/scope-joiners` | Higher-order orchestration API | `JoinStrategy`, `ScopeJoiner`, `firstSuccess`, `quorum`, `hedged` implemented on `main` and queued for the next release |
 | `feature/examples-benchmarks` | Examples + benchmarks | runnable `examples/` and JMH `benchmarks/` implemented on `main` and queued for the next release |
+| `feature/observability-ecosystem` | Observability ecosystem | `SlowTaskHook`, Micrometer integration, and SLF4J / MDC bridge implemented on `main` and queued for the next release |
 
 ## Proposed Delivery Sequence
 
@@ -132,6 +132,8 @@ Acceptance criteria:
 
 ### Phase 4: Observability Ecosystem
 
+Status: delivered on `main`, pending next version release
+
 Branch: `feature/observability-ecosystem`
 
 Goals:
@@ -204,7 +206,7 @@ Target artifacts:
 
 - `feature/docs-governance-onboarding` should start first because all later work needs a stable public narrative.
 - delivered examples/benchmarks depend on joiner APIs and now provide the canonical runnable adoption surface.
-- `feature/observability-ecosystem` can proceed after the docs baseline cleanup and may reuse the new examples as integration targets.
+- delivered observability integrations can reuse the new examples as integration targets.
 
 ## Release Guidance
 

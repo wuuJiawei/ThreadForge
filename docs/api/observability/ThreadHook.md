@@ -12,6 +12,7 @@
 - 配置方式：`ThreadScope.open().withHook(hook)`
 - 与内置指标关系：`ThreadScope.metrics()` 负责聚合快照，hook 负责外部系统接入
 - OpenTelemetry 可直接使用：`ThreadScope.open().withOpenTelemetry(...)`
+- 可组合：`hookA.andThen(hookB)`
 
 ## 回调方法
 
@@ -36,6 +37,7 @@
 - 回调运行在工作线程上下文，避免耗时阻塞
 - 框架会吞掉 hook 内异常，不影响主任务流程
 - 可用于埋点、日志、追踪、告警
+- `SlowTaskHook` 可直接复用当前 hook 体系做慢任务告警
 
 ## 示例
 

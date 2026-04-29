@@ -46,6 +46,8 @@ import io.threadforge.Channel;
 import io.threadforge.FailurePolicy;
 import io.threadforge.JoinStrategy;
 import io.threadforge.RetryPolicy;
+import io.threadforge.SlowTaskEvent;
+import io.threadforge.SlowTaskHook;
 import io.threadforge.TaskPriority;
 import io.threadforge.Context;
 import io.threadforge.CancellationToken;
@@ -264,12 +266,21 @@ Integer result = base
 
 ```java
 // Lifecycle hooks
-.withHook(new ThreadHook() {
+ThreadHook hook = new ThreadHook() {
     @Override public void onStart(TaskInfo info) {}
     @Override public void onSuccess(TaskInfo info, Duration duration) {}
     @Override public void onFailure(TaskInfo info, Throwable error, Duration duration) {}
     @Override public void onCancel(TaskInfo info, Duration duration) {}
-});
+};
+
+// Compose multiple hooks
+ThreadHook combined = hook.andThen(
+    SlowTaskHook.create(Duration.ofMillis(200), event -> {
+        System.out.println("slow: " + event.info().name());
+    })
+);
+
+ThreadScope scope = ThreadScope.open().withHook(combined);
 
 // Metrics snapshot
 ScopeMetricsSnapshot snapshot = scope.metrics();
@@ -281,6 +292,17 @@ snapshot.completed()       // long (succeeded + failed + cancelled)
 snapshot.totalDuration()   // Duration
 snapshot.averageDuration() // Duration
 snapshot.maxDuration()     // Duration
+```
+
+Slow-task event API:
+
+```java
+SlowTaskHook.create(Duration.ofMillis(200), event -> {
+    TaskInfo info = event.info();
+    Task.State state = event.state();
+    Duration duration = event.duration();
+    Throwable error = event.error();
+});
 ```
 
 ### Cleanup Callbacks

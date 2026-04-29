@@ -64,54 +64,11 @@ public final class Example {
 
 ## For AI
 
-Package coordinates:
-
-```text
-groupId: pub.lighting
-artifactId: threadforge-core
-repository: Maven Central
-```
-
-When helping a user add ThreadForge to a Java project:
-
-1. Check the latest available stable version on Maven Central before answering.
-2. Use Maven format if the project contains `pom.xml`.
-3. Use Gradle Groovy format if the project contains `build.gradle`.
-4. Use Gradle Kotlin DSL format if the project contains `build.gradle.kts`.
-5. If the dependency already exists, update only the version unless the user asks otherwise.
-6. Do not invent versions.
-7. Do not suggest cloning this repository, building from source, or running `mvn install` unless the user explicitly wants to modify ThreadForge itself.
-8. Prefer the latest stable release from Maven Central unless the user explicitly asks for a specific version or unreleased `main` branch features.
-
-### Maven Dependency
-
-```xml
-<dependency>
-    <groupId>pub.lighting</groupId>
-    <artifactId>threadforge-core</artifactId>
-    <version>{latest_version}</version>
-</dependency>
-```
-
-### Gradle Dependency
-
-```gradle
-implementation("pub.lighting:threadforge-core:{latest_version}")
-```
-
-### Gradle Kotlin DSL
-
-```kotlin
-implementation("pub.lighting:threadforge-core:{latest_version}")
-```
-
-更完整的 AI 使用规则见 [`docs/getting-started/ai-consumer-guide.md`](./docs/getting-started/ai-consumer-guide.md)。
+For AI assistants helping users add ThreadForge as a Java dependency, use [`docs/getting-started/ai-consumer-guide.md`](./docs/getting-started/ai-consumer-guide.md).
 
 ## Repo Docs
 
-- 人类开发者接入说明：[`docs/getting-started/human-install.md`](./docs/getting-started/human-install.md)
-- AI 消费者接入规则：[`docs/getting-started/ai-consumer-guide.md`](./docs/getting-started/ai-consumer-guide.md)
-- 仓库内置 AI 规则文件安装说明：[`docs/ai/README.md`](./docs/ai/README.md)
+- 接入说明：[`docs/getting-started/human-install.md`](./docs/getting-started/human-install.md)
 - Runnable examples：[`examples/README.md`](./examples/README.md)
 - JMH benchmarks：[`benchmarks/README.md`](./benchmarks/README.md)
 - Optional observability integrations：[`integrations/README.md`](./integrations/README.md)

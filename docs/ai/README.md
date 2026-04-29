@@ -1,8 +1,12 @@
-# ThreadForge AI Installation Guide
+# ThreadForge AI Rule Files
 
-This directory contains AI-facing integration files that help coding assistants generate correct ThreadForge code without guessing the concurrency model.
+This directory contains repository AI rule files such as `threadforge.SKILL.md`, `threadforge.mdc`, and `threadforge-agents.md`.
 
-These files are for projects that use ThreadForge, not only for the ThreadForge repo itself.
+These files are for installing ThreadForge-specific coding rules into AI tools.
+
+If you want AI guidance for adding ThreadForge as a Maven/Gradle dependency to a Java project, use:
+
+- [`../getting-started/ai-consumer-guide.md`](../getting-started/ai-consumer-guide.md)
 
 ## Pick the Right File
 

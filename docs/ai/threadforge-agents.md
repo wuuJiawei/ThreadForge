@@ -21,6 +21,8 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `scope.joiner().firstSuccess(...)` — return first successful result, cancel unfinished siblings
 - `scope.joiner().quorum(n, ...)` — return once `n` tasks succeed
 - `scope.joiner().hedged(delay, primary, backup...)` — start one task now and release backup tasks after the hedge delay
+- `SlowTaskHook.create(threshold, consumer)` — emit events for tasks slower than a threshold
+- `hookA.andThen(hookB)` — compose multiple hooks
 - `task.await()` — get single task result
 - `scope.schedule(duration, callable)` — delayed execution
 - `scope.scheduleAtFixedRate(initial, period, runnable)` — periodic execution
@@ -41,6 +43,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `RetryPolicy.maxAttempts` includes the first attempt (3 = 1 initial + 2 retries)
 - `Context` auto-propagates from submit thread to task thread
 - `ScopeJoiner` launches tasks inside the same `ThreadScope`; deadline, cancellation, retry, and hooks still apply
+- `integrations/threadforge-micrometer` and `integrations/threadforge-slf4j` provide optional observability bridges without changing core semantics
 
 ## Scheduler
 

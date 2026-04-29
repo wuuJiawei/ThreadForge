@@ -27,6 +27,8 @@
 - [[Control-CancellationToken]]
 - [[Observability-ThreadHook]]
 - [[Observability-OpenTelemetryHook]]
+- [[Observability-SlowTaskHook]]
+- [[Observability-SlowTaskEvent]]
 - [[Observability-TaskInfo]]
 - [[Observability-ScopeMetricsSnapshot]]
 - [[Errors-Exceptions]]

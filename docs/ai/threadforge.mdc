@@ -74,6 +74,20 @@ String hedged = scope.joiner().hedged(Duration.ofMillis(50), primaryCall, backup
 - `hedged(delay, primary, backup...)` starts the primary immediately and releases backup callables after the hedge delay
 - joiners run inside the existing `ThreadScope`; they do not replace scope lifecycle rules
 
+## Observability Extensions
+
+```java
+ThreadHook combined = SlowTaskHook.create(Duration.ofMillis(200), event -> {
+    System.out.println(event.info().name());
+}).andThen(new ThreadHook() {
+    @Override public void onFailure(TaskInfo info, Throwable error, Duration duration) {}
+});
+```
+
+- `ThreadHook.andThen(...)` composes multiple hooks
+- `SlowTaskHook` emits events only when duration crosses the configured threshold
+- optional Micrometer and SLF4J / MDC integrations live under `integrations/`
+
 ## Context Propagation
 
 ThreadForge auto-propagates `Context` (ThreadLocal-based) at submit time:

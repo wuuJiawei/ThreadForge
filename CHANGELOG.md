@@ -15,6 +15,9 @@
 7. 新增 `examples/` 目录，提供并行聚合、first-success fallback、quorum voting、channel pipeline 等可运行示例。
 8. 新增 `benchmarks/` 目录，提供 JMH benchmark 与对 `ExecutorService` / `CompletableFuture` 的基线对比。
 9. README 补充 examples / benchmarks 入口和本地运行说明。
+10. 新增 `SlowTaskHook` / `SlowTaskEvent`，提供基于 `ThreadHook` 的慢任务检测能力。
+11. 新增 optional observability integrations：Micrometer hook 与 SLF4J / MDC bridge。
+12. `ThreadHook` 新增 `andThen(...)`，支持多个 hook 组合。
 
 ## [1.1.2] - 2026-03-11
 

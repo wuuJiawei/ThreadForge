@@ -12,6 +12,9 @@
 4. 对齐 `README.md`、`docs/api/README.md`、`docs/FEATURE.md` 的产品现状和 roadmap 口径，避免把未来能力写成已发布能力。
 5. 新增 `JoinStrategy` 与 `ScopeJoiner`，提供 `firstSuccess`、`quorum(n)` 与 `hedged(delay)` 高阶编排能力。
 6. 补充 joiner API 的测试、API 文档和 AI 集成规则说明。
+7. 新增 `examples/` 目录，提供并行聚合、first-success fallback、quorum voting、channel pipeline 等可运行示例。
+8. 新增 `benchmarks/` 目录，提供 JMH benchmark 与对 `ExecutorService` / `CompletableFuture` 的基线对比。
+9. README 补充 examples / benchmarks 入口和本地运行说明。
 
 ## [1.1.2] - 2026-03-11
 

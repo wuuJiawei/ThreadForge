@@ -17,7 +17,6 @@
 | Branch | Theme | Priority | Purpose |
 |---|---|---:|---|
 | `feature/docs-governance-onboarding` | Docs governance + onboarding | P0 | Unify repo messaging and improve first-run experience for humans and AI tools |
-| `feature/examples-benchmarks` | Examples + benchmarks | P1 | Add runnable business examples and measurable performance baselines |
 | `feature/observability-ecosystem` | Observability ecosystem | P1 | Extend beyond OTel with Micrometer, MDC propagation, and slow-task diagnostics |
 
 ## Delivered On Main
@@ -25,6 +24,7 @@
 | Branch | Theme | Outcome |
 |---|---|---|
 | `feature/scope-joiners` | Higher-order orchestration API | `JoinStrategy`, `ScopeJoiner`, `firstSuccess`, `quorum`, `hedged` implemented on `main` and queued for the next release |
+| `feature/examples-benchmarks` | Examples + benchmarks | runnable `examples/` and JMH `benchmarks/` implemented on `main` and queued for the next release |
 
 ## Proposed Delivery Sequence
 
@@ -92,6 +92,8 @@ Acceptance criteria:
 - `hedged` starts backup work only after the configured delay and preserves structured cancellation semantics.
 
 ### Phase 3: Adoption Assets
+
+Status: delivered on `main`, pending next version release
 
 Branch: `feature/examples-benchmarks`
 
@@ -201,8 +203,8 @@ Target artifacts:
 ## Dependencies Between Features
 
 - `feature/docs-governance-onboarding` should start first because all later work needs a stable public narrative.
-- `feature/examples-benchmarks` depends partly on delivered joiner APIs, because the best examples should exercise the new orchestration patterns.
-- `feature/observability-ecosystem` can proceed in parallel with `feature/examples-benchmarks`, but its docs should land after the docs baseline cleanup.
+- delivered examples/benchmarks depend on joiner APIs and now provide the canonical runnable adoption surface.
+- `feature/observability-ecosystem` can proceed after the docs baseline cleanup and may reuse the new examples as integration targets.
 
 ## Release Guidance
 

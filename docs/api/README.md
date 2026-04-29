@@ -30,6 +30,7 @@
 ## 目录导航
 
 - [Core / ThreadScope](core/ThreadScope.md)
+- [Core / ScopeJoiner](core/ScopeJoiner.md)
 - [Core / Task](core/Task.md)
 - [Core / Outcome](core/Outcome.md)
 - [Runtime / Scheduler](runtime/Scheduler.md)
@@ -38,6 +39,7 @@
 - [Dataflow / Channel](dataflow/Channel.md)
 - [Control / FailurePolicy](control/FailurePolicy.md)
 - [Control / RetryPolicy](control/RetryPolicy.md)
+- [Control / JoinStrategy](control/JoinStrategy.md)
 - [Control / TaskPriority](control/TaskPriority.md)
 - [Control / Context](control/Context.md)
 - [Control / CancellationToken](control/CancellationToken.md)
@@ -63,6 +65,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 ## API 设计总览
 
 - 结构化并发入口：`ThreadScope`
+- 高阶编排入口：`ScopeJoiner` + `JoinStrategy`
 - 任务句柄：`Task<T>`
 - 等待结果摘要：`Outcome`
 - 执行器抽象：`Scheduler`
@@ -78,7 +81,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 内置指标快照：`ScopeMetricsSnapshot`
 - 语义异常：`CancelledException` / `ScopeTimeoutException` / `TaskTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
 
-当前尚未发布但已在 roadmap 中规划的能力包括更高阶的 join orchestration、官方 examples/benchmarks，以及 Micrometer / MDC 集成。
+当前尚未发布但已在 roadmap 中规划的能力包括官方 examples/benchmarks，以及 Micrometer / MDC 集成。
 
 ## JDK 兼容性
 

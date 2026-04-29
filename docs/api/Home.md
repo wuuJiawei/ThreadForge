@@ -12,6 +12,7 @@
 ## 快速导航
 
 - [[Core-ThreadScope]]
+- [[Core-ScopeJoiner]]
 - [[Core-Task]]
 - [[Core-Outcome]]
 - [[Runtime-Scheduler]]
@@ -20,6 +21,7 @@
 - [[Dataflow-Channel]]
 - [[Control-FailurePolicy]]
 - [[Control-RetryPolicy]]
+- [[Control-JoinStrategy]]
 - [[Control-TaskPriority]]
 - [[Control-Context]]
 - [[Control-CancellationToken]]
@@ -47,3 +49,11 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 默认失败策略：`FailurePolicy.FAIL_FAST`
 - 默认 deadline：`Duration.ofSeconds(30)`
 - 默认调度器：`Scheduler.detect()`
+
+## main 分支新增能力
+
+- `JoinStrategy.firstSuccess()`
+- `JoinStrategy.quorum(n)`
+- `JoinStrategy.hedged(delay)`
+- `ThreadScope.join(...)`
+- `ThreadScope.joiner()`

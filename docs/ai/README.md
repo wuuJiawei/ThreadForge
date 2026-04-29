@@ -12,14 +12,20 @@ These files are for projects that use ThreadForge, not only for the ThreadForge 
 | `threadforge.mdc` | your tool reads Cursor-style rule files | Cursor, Windsurf-compatible rule systems |
 | `threadforge-agents.md` | your tool reads AGENTS-style repository instructions | Codex CLI, Gemini CLI, Copilot instruction files, generic AGENTS consumers |
 
-All three files describe the same shipped ThreadForge API surface for `1.1.2`.
+All three files describe the current API surface on this repository's `main` branch.
+
+Important:
+
+- Maven Central latest is still `1.1.2`
+- `main` already contains the new joiner APIs (`JoinStrategy` / `ScopeJoiner`)
+- if your project is pinned to `1.1.2`, do not let the assistant generate joiner code yet
 
 ## What These Files Teach the Assistant
 
 - always use `ThreadScope` with try-with-resources
 - configure `with*` methods before the first `submit()` or `schedule()`
 - understand default deadline, retry, cancellation, and failure semantics
-- use the shipped `io.threadforge` API only
+- use the actual `io.threadforge` API that exists in the target project version
 - avoid inventing roadmap features that do not exist yet
 
 ## Installation by Tool
@@ -118,4 +124,4 @@ When the roadmap changes without a shipped API change:
 
 ## Version
 
-These files currently describe ThreadForge `1.1.2`.
+These files currently track the repository `main` branch, which is ahead of Maven Central `1.1.2`.

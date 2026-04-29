@@ -17,9 +17,14 @@
 | Branch | Theme | Priority | Purpose |
 |---|---|---:|---|
 | `feature/docs-governance-onboarding` | Docs governance + onboarding | P0 | Unify repo messaging and improve first-run experience for humans and AI tools |
-| `feature/scope-joiners` | Higher-order orchestration API | P0 | Add `JoinStrategy` / `ScopeJoiner` and first batch of structured fan-in patterns |
 | `feature/examples-benchmarks` | Examples + benchmarks | P1 | Add runnable business examples and measurable performance baselines |
 | `feature/observability-ecosystem` | Observability ecosystem | P1 | Extend beyond OTel with Micrometer, MDC propagation, and slow-task diagnostics |
+
+## Delivered On Main
+
+| Branch | Theme | Outcome |
+|---|---|---|
+| `feature/scope-joiners` | Higher-order orchestration API | `JoinStrategy`, `ScopeJoiner`, `firstSuccess`, `quorum`, `hedged` implemented on `main` and queued for the next release |
 
 ## Proposed Delivery Sequence
 
@@ -49,6 +54,8 @@ Acceptance criteria:
 - No public doc claims a feature is both shipped and pending at the same time.
 
 ### Phase 2: Higher-Order Orchestration
+
+Status: delivered on `main`, pending next version release
 
 Branch: `feature/scope-joiners`
 
@@ -194,15 +201,14 @@ Target artifacts:
 ## Dependencies Between Features
 
 - `feature/docs-governance-onboarding` should start first because all later work needs a stable public narrative.
-- `feature/scope-joiners` can start immediately after the docs baseline is defined.
-- `feature/examples-benchmarks` depends partly on `feature/scope-joiners`, because the best examples should exercise the new orchestration APIs.
-- `feature/observability-ecosystem` can proceed in parallel with `feature/scope-joiners`, but its docs should land after the docs baseline cleanup.
+- `feature/examples-benchmarks` depends partly on delivered joiner APIs, because the best examples should exercise the new orchestration patterns.
+- `feature/observability-ecosystem` can proceed in parallel with `feature/examples-benchmarks`, but its docs should land after the docs baseline cleanup.
 
 ## Release Guidance
 
 This roadmap intentionally avoids fixing exact release numbers until implementation starts, but the current expectation is:
 
-- first release after `1.1.2`: docs cleanup + onboarding + joiner API groundwork
+- first release after `1.1.2`: docs cleanup + onboarding + joiner APIs
 - next release: examples + benchmarks
 - following release: observability ecosystem additions
 

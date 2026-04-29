@@ -38,11 +38,13 @@ import io.threadforge.ThreadScope;
 import io.threadforge.Task;
 import io.threadforge.Task.State;
 import io.threadforge.Outcome;
+import io.threadforge.ScopeJoiner;
 import io.threadforge.Scheduler;
 import io.threadforge.DelayScheduler;
 import io.threadforge.ScheduledTask;
 import io.threadforge.Channel;
 import io.threadforge.FailurePolicy;
+import io.threadforge.JoinStrategy;
 import io.threadforge.RetryPolicy;
 import io.threadforge.TaskPriority;
 import io.threadforge.Context;
@@ -127,6 +129,37 @@ Outcome outcome = scope.await(collectionOfTasks);
 List<T> results = scope.awaitAll(task1, task2, task3);
 List<T> results = scope.awaitAll(collectionOfTasks);
 ```
+
+### Higher-Order Joiners
+
+```java
+// Strategy-driven
+String winner = scope.join(
+    JoinStrategy.<String>firstSuccess(),
+    callA,
+    callB,
+    callC
+);
+
+List<String> quorum = scope.join(
+    JoinStrategy.<String>quorum(2),
+    replicaA,
+    replicaB,
+    replicaC
+);
+
+// Convenience entry point
+ScopeJoiner joiner = scope.joiner();
+String hedged = joiner.hedged(Duration.ofMillis(50), primaryCall, backupCall);
+```
+
+Joiner rules:
+
+- `firstSuccess` returns the first successful value and cancels unfinished sibling tasks
+- `quorum(n)` returns the first `n` successful results and cancels unfinished sibling tasks once quorum is reached
+- `hedged(delay, primary, backup...)` starts the first callable immediately and releases backup callables after the hedge delay
+- if no successful result can be produced, joiner throws `AggregateException` or `CancelledException`
+- joiners do not create a new scope; they submit tasks into the current `ThreadScope`
 
 ### FailurePolicy
 
@@ -373,6 +406,7 @@ try (ThreadScope scope = ThreadScope.open()
 | Sending to closed Channel | `ChannelClosedException` thrown; check `channel.close()` timing |
 | Confusing `maxAttempts` with retry count | `maxAttempts(3)` = 1 initial + 2 retries = 3 total executions |
 | Catching `ScopeTimeoutException` with `FAIL_FAST` | `FAIL_FAST` throws the task failure, not timeout; use `withDeadline` separately |
+| Inventing roadmap-only APIs beyond shipped joiners | Use only `JoinStrategy` / `ScopeJoiner` methods that already exist in the codebase |
 
 ## Migration from java.util.concurrent
 

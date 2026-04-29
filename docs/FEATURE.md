@@ -37,13 +37,12 @@ The following capability is implemented on the `main` branch and is planned for 
 | Area | Capability | Public API |
 |---|---|---|
 | Higher-order orchestration | first-success, quorum, and hedged fan-in | `JoinStrategy`, `ScopeJoiner`, `ThreadScope.join(...)` |
+| Adoption assets | runnable examples and JMH benchmarks | `examples/`, `benchmarks/` |
 
 ## Current Gaps
 
 These are the main product gaps today:
 
-- no official `examples/` directory with runnable business-style samples
-- no benchmark module for reproducible performance comparisons
 - no Micrometer or MDC/SLF4J integration module yet
 - no dedicated Spring Boot starter yet
 
@@ -54,7 +53,6 @@ The roadmap is tracked in [`docs/ROADMAP.md`](./ROADMAP.md). The next planned fe
 | Priority | Branch | Theme | Planned Outcome |
 |---|---|---|---|
 | P0 | `feature/docs-governance-onboarding` | Docs governance + onboarding | clearer README, human install guide, AI install guide |
-| P1 | `feature/examples-benchmarks` | Adoption assets | runnable examples and JMH baselines |
 | P1 | `feature/observability-ecosystem` | Observability ecosystem | Micrometer, MDC/SLF4J bridge, slow-task diagnostics |
 
 ## Explicitly Deferred

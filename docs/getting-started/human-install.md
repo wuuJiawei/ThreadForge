@@ -1,10 +1,23 @@
 # ThreadForge Human Install Guide
 
-This guide is for developers who want to get ThreadForge running quickly and understand the default execution model before writing larger concurrent flows.
+This guide is for developers who want to add ThreadForge to an existing Java project as a dependency.
 
-## 1. Add the Dependency
+## Latest Stable Release
 
-Maven:
+Verified on 2026-04-29:
+
+- repository: Maven Central
+- groupId: `pub.lighting`
+- artifactId: `threadforge-core`
+- latest stable version: `1.1.2`
+
+Reference:
+
+- [Maven Central artifact page](https://central.sonatype.com/artifact/pub.lighting/threadforge-core)
+
+## Maven
+
+Add this to `pom.xml`:
 
 ```xml
 <dependency>
@@ -14,31 +27,39 @@ Maven:
 </dependency>
 ```
 
-Gradle:
+## Gradle
+
+Add this to `build.gradle`:
 
 ```gradle
 implementation("pub.lighting:threadforge-core:1.1.2")
 ```
 
-## 2. Understand the Core Pattern
+## Gradle Kotlin DSL
 
-Every task belongs to a `ThreadScope`. Open a scope, submit tasks, await results, and let try-with-resources close the scope.
+Add this to `build.gradle.kts`:
+
+```kotlin
+implementation("pub.lighting:threadforge-core:1.1.2")
+```
+
+## Basic Usage
 
 ```java
 import io.threadforge.Task;
 import io.threadforge.ThreadScope;
 
-try (ThreadScope scope = ThreadScope.open()) {
-    Task<String> userTask = scope.submit("load-user", () -> "u-100");
-    String user = userTask.await();
+public final class Example {
+    public static void main(String[] args) {
+        try (ThreadScope scope = ThreadScope.open()) {
+            Task<String> task = scope.submit("load-user", () -> "u-100");
+            System.out.println(task.await());
+        }
+    }
 }
 ```
 
-This is the minimum useful ThreadForge program.
-
-## 3. Know the Defaults
-
-Before you use the library in production code, know the defaults:
+## What To Expect By Default
 
 - default failure policy: `FAIL_FAST`
 - default scope deadline: `30s`
@@ -46,60 +67,21 @@ Before you use the library in production code, know the defaults:
 - default scheduler: `Scheduler.detect()`
 - default task priority: `TaskPriority.NORMAL`
 
-That means the first task failure will usually cancel sibling tasks and surface immediately.
+That means the first task failure usually cancels sibling tasks and surfaces immediately.
 
-## 4. First Practical Example
+## Do Not Start With Source Build
 
-Use ThreadForge when you have a small group of related tasks that should succeed or fail as one unit.
+If you only want to use ThreadForge in your own project:
 
-```java
-import io.threadforge.FailurePolicy;
-import io.threadforge.Task;
-import io.threadforge.ThreadScope;
+- use the Maven Central dependency
+- do not clone this repository
+- do not run `mvn install`
 
-import java.time.Duration;
+Only build from source if you want to modify or contribute to ThreadForge itself.
 
-try (ThreadScope scope = ThreadScope.open()
-    .withFailurePolicy(FailurePolicy.FAIL_FAST)
-    .withDeadline(Duration.ofSeconds(2))) {
-    Task<String> profile = scope.submit("load-profile", () -> loadProfile());
-    Task<String> orders = scope.submit("load-orders", () -> loadOrders());
+## Where To Go Next
 
-    scope.await(profile, orders);
-    return profile.await() + orders.await();
-}
-```
-
-## 5. When ThreadForge Fits
-
-ThreadForge is a good fit when:
-
-- several related tasks share one lifecycle boundary
-- timeout and cancellation should be centralized
-- failure handling should be explicit and consistent
-- you want a smaller mental model than manually wiring many `CompletableFuture`s
-
-## 6. When It Does Not Fit
-
-ThreadForge is not the first tool to reach for when:
-
-- you need a reactive streaming framework
-- you need a Spring Boot starter or Actuator integration today
-- you only have one synchronous call and no concurrency boundary
-- your task graph is already owned by another framework runtime
-
-## 7. Common First Mistakes
-
-- calling `with*` methods after the first `submit()` or `schedule()`
-- forgetting try-with-resources around `ThreadScope`
-- assuming `RetryPolicy.attempts(3)` means three retries instead of three total attempts
-- ignoring `Outcome` when using `SUPERVISOR` or `IGNORE_ALL`
-- treating roadmap features as shipped API
-
-## 8. Where to Go Next
-
-- overview and install entry: [`../../README.md`](../../README.md)
+- overview and dependency snippets: [`../../README.md`](../../README.md)
+- AI consumer guide: [`./ai-consumer-guide.md`](./ai-consumer-guide.md)
 - API docs: [`../api/README.md`](../api/README.md)
-- AI installation guide: [`../ai/README.md`](../ai/README.md)
-- feature status: [`../FEATURE.md`](../FEATURE.md)
-- roadmap: [`../ROADMAP.md`](../ROADMAP.md)
+- runnable examples: [`../../examples/README.md`](../../examples/README.md)

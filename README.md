@@ -12,10 +12,106 @@ ThreadForge 是一个减少多线程心智负担的结构化并发框架，目�
 
 > 先降低并发代码的认知成本，再追求吞吐与性能。
 
-## 快速导航
+## For Human
 
-- 人类开发者安装与首次上手：[`docs/getting-started/human-install.md`](./docs/getting-started/human-install.md)
-- AI 助手安装与项目规则注入：[`docs/ai/README.md`](./docs/ai/README.md)
+已在 Maven Central 发布。
+
+经核对，Maven Central 上当前最新稳定版本在 2026-04-29 是 `1.1.2`：
+
+- Maven Central: [pub.lighting:threadforge-core](https://central.sonatype.com/artifact/pub.lighting/threadforge-core)
+
+### Maven
+
+把下面依赖加入 `pom.xml`：
+
+```xml
+<dependency>
+    <groupId>pub.lighting</groupId>
+    <artifactId>threadforge-core</artifactId>
+    <version>1.1.2</version>
+</dependency>
+```
+
+### Gradle
+
+```gradle
+implementation("pub.lighting:threadforge-core:1.1.2")
+```
+
+### Gradle Kotlin DSL
+
+```kotlin
+implementation("pub.lighting:threadforge-core:1.1.2")
+```
+
+### Basic Usage
+
+```java
+import io.threadforge.Task;
+import io.threadforge.ThreadScope;
+
+public final class Example {
+    public static void main(String[] args) {
+        try (ThreadScope scope = ThreadScope.open()) {
+            Task<String> task = scope.submit("load-user", () -> "u-100");
+            System.out.println(task.await());
+        }
+    }
+}
+```
+
+更完整的人类开发者接入说明见 [`docs/getting-started/human-install.md`](./docs/getting-started/human-install.md)。
+
+## For AI
+
+Package coordinates:
+
+```text
+groupId: pub.lighting
+artifactId: threadforge-core
+repository: Maven Central
+```
+
+When helping a user add ThreadForge to a Java project:
+
+1. Check the latest available stable version on Maven Central before answering.
+2. Use Maven format if the project contains `pom.xml`.
+3. Use Gradle Groovy format if the project contains `build.gradle`.
+4. Use Gradle Kotlin DSL format if the project contains `build.gradle.kts`.
+5. If the dependency already exists, update only the version unless the user asks otherwise.
+6. Do not invent versions.
+7. Do not suggest cloning this repository, building from source, or running `mvn install` unless the user explicitly wants to modify ThreadForge itself.
+8. Prefer the latest stable release from Maven Central unless the user explicitly asks for a specific version or unreleased `main` branch features.
+
+### Maven Dependency
+
+```xml
+<dependency>
+    <groupId>pub.lighting</groupId>
+    <artifactId>threadforge-core</artifactId>
+    <version>{latest_version}</version>
+</dependency>
+```
+
+### Gradle Dependency
+
+```gradle
+implementation("pub.lighting:threadforge-core:{latest_version}")
+```
+
+### Gradle Kotlin DSL
+
+```kotlin
+implementation("pub.lighting:threadforge-core:{latest_version}")
+```
+
+更完整的 AI 使用规则见 [`docs/getting-started/ai-consumer-guide.md`](./docs/getting-started/ai-consumer-guide.md)。
+
+## Repo Docs
+
+- 人类开发者接入说明：[`docs/getting-started/human-install.md`](./docs/getting-started/human-install.md)
+- AI 消费者接入规则：[`docs/getting-started/ai-consumer-guide.md`](./docs/getting-started/ai-consumer-guide.md)
+- 仓库内置 AI 规则文件安装说明：[`docs/ai/README.md`](./docs/ai/README.md)
 - Runnable examples：[`examples/README.md`](./examples/README.md)
 - JMH benchmarks：[`benchmarks/README.md`](./benchmarks/README.md)
 - Optional observability integrations：[`integrations/README.md`](./integrations/README.md)
@@ -82,31 +178,6 @@ try (ThreadScope scope = ThreadScope.open()) {
     String user = task.await();
 }
 ```
-
-## 安装
-
-Maven:
-
-```xml
-<dependency>
-    <groupId>pub.lighting</groupId>
-    <artifactId>threadforge-core</artifactId>
-    <version>1.1.2</version>
-</dependency>
-```
-
-Gradle:
-
-```gradle
-implementation("pub.lighting:threadforge-core:1.1.2")
-```
-
-首次接入建议直接从 [`docs/getting-started/human-install.md`](./docs/getting-started/human-install.md) 开始，那里包含：
-
-- 依赖安装
-- 第一个可运行示例
-- 什么时候该用 ThreadForge，什么时候不该用
-- 默认失败、超时、取消语义说明
 
 ## 兼容性与构建
 

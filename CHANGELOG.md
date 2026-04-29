@@ -4,6 +4,13 @@
 
 规则：按时间倒序记录（最新版本在最上方）。
 
+## [Unreleased]
+
+1. 重写 `docs/ROADMAP.md`，按 `feature/*` 分支拆分后续工作线，并明确 docs/onboarding、joiners、examples/benchmarks、observability 的推进顺序。
+2. 新增人类开发者快速上手文档，补齐安装、首个示例、何时使用 ThreadForge 以及默认失败/超时/取消语义说明。
+3. 重写 AI 安装说明，明确 Codex / Claude Code / Cursor / Copilot / Windsurf 该使用哪种集成文件以及如何安装。
+4. 对齐 `README.md`、`docs/api/README.md`、`docs/FEATURE.md` 的产品现状和 roadmap 口径，避免把未来能力写成已发布能力。
+
 ## [1.1.2] - 2026-03-11
 
 1. 新增 tag 驱动的 GitHub Actions `release.yml`，在 `vX.Y.Z` tag 推送后自动执行构建、测试、GitHub Release 创建与 changelog 注入。

@@ -1,91 +1,121 @@
-# ThreadForge AI Integration
+# ThreadForge AI Installation Guide
 
-This directory contains AI-friendly integration files that help AI coding assistants (Claude Code, Cursor, Copilot, Codex CLI, etc.) write correct ThreadForge code.
+This directory contains AI-facing integration files that help coding assistants generate correct ThreadForge code without guessing the concurrency model.
 
-## What's Included
+These files are for projects that use ThreadForge, not only for the ThreadForge repo itself.
 
-| File | Format | Target Tool |
+## Pick the Right File
+
+| File | Use When | Target Tools |
 |---|---|---|
-| `threadforge.SKILL.md` | SKILL.md | Claude Code, OpenCode |
-| `threadforge.mdc` | Cursor .mdc | Cursor |
-| `threadforge-agents.md` | AGENTS.md snippet | Codex CLI, Gemini CLI, Cursor (fallback) |
+| `threadforge.SKILL.md` | your tool supports a dedicated skill format | Claude Code, OpenCode, skill-based agents |
+| `threadforge.mdc` | your tool reads Cursor-style rule files | Cursor, Windsurf-compatible rule systems |
+| `threadforge-agents.md` | your tool reads AGENTS-style repository instructions | Codex CLI, Gemini CLI, Copilot instruction files, generic AGENTS consumers |
 
-All three files contain the same core API knowledge in different formats.
+All three files describe the same shipped ThreadForge API surface for `1.1.2`.
 
-## Installation
+## What These Files Teach the Assistant
+
+- always use `ThreadScope` with try-with-resources
+- configure `with*` methods before the first `submit()` or `schedule()`
+- understand default deadline, retry, cancellation, and failure semantics
+- use the shipped `io.threadforge` API only
+- avoid inventing roadmap features that do not exist yet
+
+## Installation by Tool
+
+### Codex CLI / Generic AGENTS
+
+Append the AGENTS snippet to the target project's `AGENTS.md`:
+
+```bash
+cat docs/ai/threadforge-agents.md >> AGENTS.md
+```
+
+If the project does not already have an `AGENTS.md`, create one first:
+
+```bash
+touch AGENTS.md
+cat docs/ai/threadforge-agents.md >> AGENTS.md
+```
 
 ### Claude Code
 
-Copy the SKILL.md to your global skills directory:
+Install as a global or project-local skill:
 
 ```bash
 mkdir -p ~/.claude/skills/threadforge
-cp threadforge.SKILL.md ~/.claude/skills/threadforge/SKILL.md
+cp docs/ai/threadforge.SKILL.md ~/.claude/skills/threadforge/SKILL.md
 ```
 
-Or place it in your project's `.claude/skills/` directory:
+Project-local alternative:
 
 ```bash
 mkdir -p .claude/skills/threadforge
-cp threadforge.SKILL.md .claude/skills/threadforge/SKILL.md
+cp docs/ai/threadforge.SKILL.md .claude/skills/threadforge/SKILL.md
 ```
 
 ### OpenCode
 
-Copy to the OpenCode skills directory:
-
 ```bash
 mkdir -p ~/.agents/skills/threadforge
-cp threadforge.SKILL.md ~/.agents/skills/threadforge/SKILL.md
+cp docs/ai/threadforge.SKILL.md ~/.agents/skills/threadforge/SKILL.md
 ```
 
 ### Cursor
 
-Copy the `.mdc` file to your project's Cursor rules:
+Use the dedicated rule file:
 
 ```bash
 mkdir -p .cursor/rules
-cp threadforge.mdc .cursor/rules/threadforge.mdc
+cp docs/ai/threadforge.mdc .cursor/rules/threadforge.mdc
 ```
 
-Or use the AGENTS.md approach (simpler, cross-tool):
+Fallback option if the team standardizes on AGENTS-style rules:
 
 ```bash
-cat threadforge-agents.md >> AGENTS.md
-```
-
-### Codex CLI / Gemini CLI
-
-Append the AGENTS.md snippet to your project:
-
-```bash
-cat threadforge-agents.md >> AGENTS.md
+cat docs/ai/threadforge-agents.md >> AGENTS.md
 ```
 
 ### GitHub Copilot
 
-Append to your copilot instructions:
+Append the AGENTS-style guidance to repository instructions:
 
 ```bash
 mkdir -p .github
-cat threadforge-agents.md >> .github/copilot-instructions.md
+cat docs/ai/threadforge-agents.md >> .github/copilot-instructions.md
 ```
 
 ### Windsurf
 
 ```bash
 mkdir -p .windsurf/rules
-cp threadforge.mdc .windsurf/rules/threadforge.md
+cp docs/ai/threadforge.mdc .windsurf/rules/threadforge.md
 ```
+
+## Human + AI Recommended Setup
+
+For teams that want both human onboarding and AI guidance in one repo:
+
+1. Add the Maven or Gradle dependency from [`../../README.md`](../../README.md).
+2. Read the human quick-start in [`../getting-started/human-install.md`](../getting-started/human-install.md).
+3. Install one AI integration file that matches the team's primary tool.
+4. Keep the copied file synchronized when upgrading ThreadForge.
+
+## Maintenance Rules
+
+When the public API changes:
+
+1. Update `threadforge.SKILL.md` first as the canonical AI source.
+2. Sync the same semantics into `threadforge.mdc` and `threadforge-agents.md`.
+3. Update `README.md`, `docs/api/README.md`, and `docs/FEATURE.md` if the change is user-visible.
+4. Update `CHANGELOG.md` for released or release-bound changes.
+
+When the roadmap changes without a shipped API change:
+
+- do not teach the AI files to use the planned feature as if it already exists
+- keep future work in `docs/ROADMAP.md`, not in the AI rules
 
 ## Version
 
-These files are based on ThreadForge **1.1.2**. Update when upgrading the library.
-
-## Updating
-
-The canonical source is `threadforge.SKILL.md`. The `.mdc` and `agents.md` files are derived from it. When the ThreadForge API changes:
-
-1. Update `threadforge.SKILL.md` first
-2. Sync changes to `threadforge.mdc` and `threadforge-agents.md`
-3. Re-copy to your tool's configuration directory
+These files currently describe ThreadForge `1.1.2`.

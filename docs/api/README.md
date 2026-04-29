@@ -7,6 +7,13 @@
 
 本目录是 `io.threadforge` 的完整公开 API 文档，适用于开源仓库直接阅读，也可自动生成 GitHub Wiki。
 
+如果你是第一次接触 ThreadForge，建议先读：
+
+- 人类开发者快速上手：[`../getting-started/human-install.md`](../getting-started/human-install.md)
+- AI 助手安装说明：[`../ai/README.md`](../ai/README.md)
+- 功能现状：[`../FEATURE.md`](../FEATURE.md)
+- 路线图：[`../ROADMAP.md`](../ROADMAP.md)
+
 发布坐标：
 
 - `groupId`: `pub.lighting`
@@ -70,6 +77,8 @@ try (ThreadScope scope = ThreadScope.open()) {
 - OpenTelemetry 追踪：`withOpenTelemetry(...)` + `OpenTelemetryHook`
 - 内置指标快照：`ScopeMetricsSnapshot`
 - 语义异常：`CancelledException` / `ScopeTimeoutException` / `TaskTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
+
+当前尚未发布但已在 roadmap 中规划的能力包括更高阶的 join orchestration、官方 examples/benchmarks，以及 Micrometer / MDC 集成。
 
 ## JDK 兼容性
 

@@ -29,6 +29,7 @@ try (ThreadScope scope = ThreadScope.open()
 2. **Configure before submit** — `with*` methods lock after the first `submit()` or `schedule()` call
 3. **Default deadline is 30s** — override with `.withDeadline()` or per-task `Duration` timeout
 4. **Default failure policy is `FAIL_FAST`** — first failure cancels remaining tasks and throws
+5. **Use `ScopeJoiner` for higher-order fan-in** — prefer `firstSuccess`, `quorum`, or `hedged` over handwritten cancellation races
 
 ## FailurePolicy
 
@@ -60,6 +61,19 @@ RetryPolicy.exponentialBackoff(3, initial, 2.0, maxDelay)  // Exponential backof
 
 Note: `maxAttempts` includes the first attempt (3 = 1 initial + 2 retries).
 
+## ScopeJoiner
+
+```java
+String first = scope.joiner().firstSuccess(callA, callB, callC);
+List<String> quorum = scope.joiner().quorum(2, replicaA, replicaB, replicaC);
+String hedged = scope.joiner().hedged(Duration.ofMillis(50), primaryCall, backupCall);
+```
+
+- `firstSuccess` returns the first successful value and cancels unfinished siblings
+- `quorum(n)` returns once `n` tasks succeed
+- `hedged(delay, primary, backup...)` starts the primary immediately and releases backup callables after the hedge delay
+- joiners run inside the existing `ThreadScope`; they do not replace scope lifecycle rules
+
 ## Context Propagation
 
 ThreadForge auto-propagates `Context` (ThreadLocal-based) at submit time:
@@ -87,6 +101,7 @@ String id = Context.get("traceId"); // "req-1001"
 - Not using try-with-resources — scope won't auto-close
 - Confusing `maxAttempts` with retry count — 3 = 1 initial + 2 retries
 - Ignoring `Outcome.hasFailures()` with `SUPERVISOR` or `COLLECT_ALL`
+- Rebuilding first-success or quorum logic manually when `ScopeJoiner` already fits
 
 ## Migration from java.util.concurrent
 

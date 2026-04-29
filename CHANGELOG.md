@@ -10,6 +10,8 @@
 2. 新增人类开发者快速上手文档，补齐安装、首个示例、何时使用 ThreadForge 以及默认失败/超时/取消语义说明。
 3. 重写 AI 安装说明，明确 Codex / Claude Code / Cursor / Copilot / Windsurf 该使用哪种集成文件以及如何安装。
 4. 对齐 `README.md`、`docs/api/README.md`、`docs/FEATURE.md` 的产品现状和 roadmap 口径，避免把未来能力写成已发布能力。
+5. 新增 `JoinStrategy` 与 `ScopeJoiner`，提供 `firstSuccess`、`quorum(n)` 与 `hedged(delay)` 高阶编排能力。
+6. 补充 joiner API 的测试、API 文档和 AI 集成规则说明。
 
 ## [1.1.2] - 2026-03-11
 

@@ -12,7 +12,7 @@ Current product line:
 
 ## Shipped Capabilities
 
-The following capabilities are already part of the public API in `1.1.2`:
+The following capabilities are already part of the released public API in `1.1.2`:
 
 | Area | Capability | Public API |
 |---|---|---|
@@ -30,11 +30,18 @@ The following capabilities are already part of the public API in `1.1.2`:
 | Tracing | optional OpenTelemetry bridge | `withOpenTelemetry(...)`, `OpenTelemetryHook` |
 | Composition | basic `CompletableFuture` interop | `Task.thenApply`, `thenCompose`, `exceptionally` |
 
+## Available On Main
+
+The following capability is implemented on the `main` branch and is planned for the next release after `1.1.2`:
+
+| Area | Capability | Public API |
+|---|---|---|
+| Higher-order orchestration | first-success, quorum, and hedged fan-in | `JoinStrategy`, `ScopeJoiner`, `ThreadScope.join(...)` |
+
 ## Current Gaps
 
 These are the main product gaps today:
 
-- no higher-order join API for `firstSuccess`, quorum, or hedged execution
 - no official `examples/` directory with runnable business-style samples
 - no benchmark module for reproducible performance comparisons
 - no Micrometer or MDC/SLF4J integration module yet
@@ -47,7 +54,6 @@ The roadmap is tracked in [`docs/ROADMAP.md`](./ROADMAP.md). The next planned fe
 | Priority | Branch | Theme | Planned Outcome |
 |---|---|---|---|
 | P0 | `feature/docs-governance-onboarding` | Docs governance + onboarding | clearer README, human install guide, AI install guide |
-| P0 | `feature/scope-joiners` | Higher-order orchestration | `JoinStrategy`, `ScopeJoiner`, `firstSuccess`, `quorum`, `hedged` |
 | P1 | `feature/examples-benchmarks` | Adoption assets | runnable examples and JMH baselines |
 | P1 | `feature/observability-ecosystem` | Observability ecosystem | Micrometer, MDC/SLF4J bridge, slow-task diagnostics |
 

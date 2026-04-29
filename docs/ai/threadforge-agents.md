@@ -18,6 +18,9 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `ThreadScope.open().withFailurePolicy().withDeadline().withScheduler().withRetryPolicy().withConcurrencyLimit()`
 - `scope.submit(name, callable)` — submit a task
 - `scope.await(tasks)` / `scope.awaitAll(tasks)` — wait for completion
+- `scope.joiner().firstSuccess(...)` — return first successful result, cancel unfinished siblings
+- `scope.joiner().quorum(n, ...)` — return once `n` tasks succeed
+- `scope.joiner().hedged(delay, primary, backup...)` — start one task now and release backup tasks after the hedge delay
 - `task.await()` — get single task result
 - `scope.schedule(duration, callable)` — delayed execution
 - `scope.scheduleAtFixedRate(initial, period, runnable)` — periodic execution
@@ -37,6 +40,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - Default deadline is 30 seconds — override with `.withDeadline()`
 - `RetryPolicy.maxAttempts` includes the first attempt (3 = 1 initial + 2 retries)
 - `Context` auto-propagates from submit thread to task thread
+- `ScopeJoiner` launches tasks inside the same `ThreadScope`; deadline, cancellation, retry, and hooks still apply
 
 ## Scheduler
 
@@ -51,3 +55,4 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `CancelledException` — task cancelled
 - `AggregateException` — multiple failures (`COLLECT_ALL`)
 - `TaskExecutionException` — wraps checked exceptions
+- `AggregateException("No task completed successfully", ...)` or quorum-related aggregate failure can come from joiner APIs

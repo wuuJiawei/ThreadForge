@@ -17,9 +17,11 @@ import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
@@ -327,6 +329,23 @@ public final class ThreadScope implements AutoCloseable {
      */
     public ScopeMetricsSnapshot metrics() {
         return metrics.snapshot();
+    }
+
+    /**
+     * Return a helper for higher-order orchestration patterns such as first-success, quorum, and hedged execution.
+     */
+    public ScopeJoiner joiner() {
+        ensureOpen();
+        return new ScopeJoiner(this);
+    }
+
+    public <T, R> R join(JoinStrategy<T, R> strategy, Collection<? extends Callable<T>> callables) {
+        return joiner().join(strategy, callables);
+    }
+
+    @SafeVarargs
+    public final <T, R> R join(JoinStrategy<T, R> strategy, Callable<T> first, Callable<T>... rest) {
+        return joiner().join(strategy, first, rest);
     }
 
     /**
@@ -897,8 +916,39 @@ public final class ThreadScope implements AutoCloseable {
         configLocked.set(true);
     }
 
+    <T> T awaitJoinFuture(CompletableFuture<T> future) {
+        Objects.requireNonNull(future, "future");
+
+        while (true) {
+            token.throwIfCancelled();
+            try {
+                Duration remaining = remainingDeadline();
+                long waitNanos = Math.min(remaining.toNanos(), TimeUnit.MILLISECONDS.toNanos(100));
+                return future.get(waitNanos, TimeUnit.NANOSECONDS);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+                throw new CancelledException("Interrupted while waiting for joined tasks", interruptedException);
+            } catch (TimeoutException timeoutException) {
+                continue;
+            } catch (ExecutionException executionException) {
+                rethrowJoinFailure(executionException.getCause());
+                return null;
+            }
+        }
+    }
+
     private long elapsedNanos(long startedAtNanos) {
         return Math.max(0L, System.nanoTime() - startedAtNanos);
+    }
+
+    private void rethrowJoinFailure(Throwable cause) {
+        if (cause instanceof RuntimeException) {
+            throw (RuntimeException) cause;
+        }
+        if (cause instanceof Error) {
+            throw (Error) cause;
+        }
+        throw new TaskExecutionException("Joined task execution failed", cause);
     }
 
     private void safeHookStart(TaskInfo info) {

@@ -1,7 +1,7 @@
 # ThreadForge Roadmap
 
-> Last updated: 2026-04-29
-> Planning baseline: post-`1.1.2`
+> Last updated: 2026-04-30
+> Planning baseline: post-`1.2.0`
 > Spring Boot starter / Actuator integration: deferred for a later phase
 
 ## Roadmap Principles
@@ -12,19 +12,12 @@
 - Human onboarding and AI onboarding are first-class product surfaces, not afterthoughts.
 - Framework-specific integrations stay outside `threadforge-core`.
 
-## Active Feature Branches
+## Released In 1.2.0
 
-| Branch | Theme | Priority | Purpose |
-|---|---|---:|---|
-| `feature/docs-governance-onboarding` | Docs governance + onboarding | P0 | Unify repo messaging and improve first-run experience for humans and AI tools |
-
-## Delivered On Main
-
-| Branch | Theme | Outcome |
-|---|---|---|
-| `feature/scope-joiners` | Higher-order orchestration API | `JoinStrategy`, `ScopeJoiner`, `firstSuccess`, `quorum`, `hedged` implemented on `main` and queued for the next release |
-| `feature/examples-benchmarks` | Examples + benchmarks | runnable `examples/` and JMH `benchmarks/` implemented on `main` and queued for the next release |
-| `feature/observability-ecosystem` | Observability ecosystem | `SlowTaskHook`, Micrometer integration, and SLF4J / MDC bridge implemented on `main` and queued for the next release |
+- docs / onboarding cleanup
+- higher-order orchestration API: `JoinStrategy`, `ScopeJoiner`, `firstSuccess`, `quorum`, `hedged`
+- runnable `examples/` and JMH `benchmarks/`
+- `SlowTaskHook`, Micrometer integration, and SLF4J / MDC bridge
 
 ## Proposed Delivery Sequence
 
@@ -55,7 +48,7 @@ Acceptance criteria:
 
 ### Phase 2: Higher-Order Orchestration
 
-Status: delivered on `main`, pending next version release
+Status: released in `1.2.0`
 
 Branch: `feature/scope-joiners`
 
@@ -93,7 +86,7 @@ Acceptance criteria:
 
 ### Phase 3: Adoption Assets
 
-Status: delivered on `main`, pending next version release
+Status: released in `1.2.0`
 
 Branch: `feature/examples-benchmarks`
 
@@ -132,7 +125,7 @@ Acceptance criteria:
 
 ### Phase 4: Observability Ecosystem
 
-Status: delivered on `main`, pending next version release
+Status: released in `1.2.0`
 
 Branch: `feature/observability-ecosystem`
 
@@ -202,18 +195,12 @@ Target artifacts:
 - explicit install snippets for each supported tool family
 - maintenance checklist tying API changes to `docs/ai/*`
 
-## Dependencies Between Features
+## Next Planning Direction
 
-- `feature/docs-governance-onboarding` should start first because all later work needs a stable public narrative.
-- delivered examples/benchmarks depend on joiner APIs and now provide the canonical runnable adoption surface.
-- delivered observability integrations can reuse the new examples as integration targets.
+- Spring Boot starter / auto-configuration
+- Actuator endpoint exposure
+- framework-level integration examples
 
 ## Release Guidance
-
-This roadmap intentionally avoids fixing exact release numbers until implementation starts, but the current expectation is:
-
-- first release after `1.1.2`: docs cleanup + onboarding + joiner APIs
-- next release: examples + benchmarks
-- following release: observability ecosystem additions
 
 Before any release work, follow `docs/releases.md`.

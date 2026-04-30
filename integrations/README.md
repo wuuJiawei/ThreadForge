@@ -7,7 +7,7 @@ Current modules:
 - [`threadforge-micrometer`](./threadforge-micrometer/): Micrometer `ThreadHook`
 - [`threadforge-slf4j`](./threadforge-slf4j/): MDC / SLF4J bridge for `Context` propagation
 
-Because the repository `main` branch is ahead of Maven Central `1.1.2`, install the local core artifact first:
+If you are running the integrations against unpublished local changes, install the local core artifact first:
 
 ```bash
 mvn -B -ntp -DskipTests install

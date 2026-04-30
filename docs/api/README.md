@@ -10,7 +10,7 @@
 如果你是第一次接触 ThreadForge，建议先读：
 
 - 人类开发者快速上手：[`../getting-started/human-install.md`](../getting-started/human-install.md)
-- AI 助手安装说明：[`../ai/README.md`](../ai/README.md)
+- AI 助手接入规则：[`../getting-started/ai-consumer-guide.md`](../getting-started/ai-consumer-guide.md)
 - 功能现状：[`../FEATURE.md`](../FEATURE.md)
 - 路线图：[`../ROADMAP.md`](../ROADMAP.md)
 
@@ -18,7 +18,7 @@
 
 - `groupId`: `pub.lighting`
 - `artifactId`: `threadforge-core`
-- `version`: `1.1.2`
+- `version`: `1.2.0`
 
 ## 文档目标
 
@@ -84,7 +84,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 内置指标快照：`ScopeMetricsSnapshot`
 - 语义异常：`CancelledException` / `ScopeTimeoutException` / `TaskTimeoutException` / `AggregateException` / `TaskExecutionException` / `ChannelClosedException`
 
-当前尚未发布但已在 roadmap 中规划的能力主要是 Spring 之外的更高层 observability 扩展和后续集成文档完善。
+当前后续规划主要聚焦 Spring Boot starter / Actuator 这类框架级集成能力。
 
 ## JDK 兼容性
 

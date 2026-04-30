@@ -1,6 +1,6 @@
 # Release Guide
 
-本文档描述 ThreadForge 从 `1.1.2` 开始使用的 GitHub Release 自动流程。
+本文档描述 ThreadForge 从 `1.2.0` 开始沿用的 GitHub Release 自动流程。
 
 ## 触发规则
 
@@ -58,8 +58,8 @@ mvn -B -ntp -P release clean deploy
 
 1. 在目标 release commit 中更新 `pom.xml`、`README.md`、`CHANGELOG.md` 等版本信息
 2. 将变更合入 `main`
-3. 在本地执行 `mvn -B -ntp -P release clean deploy`，先把 `1.1.2` 发布到 Maven Central
-4. Central 发布成功后，再创建并推送 tag，例如 `git tag v1.1.2 && git push origin v1.1.2`
+3. 在本地执行 `mvn -B -ntp -P release clean deploy`，先把目标版本发布到 Maven Central
+4. Central 发布成功后，再创建并推送 tag，例如 `git tag v1.2.0 && git push origin v1.2.0`
 5. 等待 GitHub Actions `Release` workflow 完成
 6. 检查 GitHub Release 正文与附件
 

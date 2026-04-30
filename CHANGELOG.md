@@ -4,20 +4,16 @@
 
 规则：按时间倒序记录（最新版本在最上方）。
 
-## [Unreleased]
+## [1.2.0] - 2026-04-30
 
-1. 重写 `docs/ROADMAP.md`，按 `feature/*` 分支拆分后续工作线，并明确 docs/onboarding、joiners、examples/benchmarks、observability 的推进顺序。
-2. 新增人类开发者快速上手文档，补齐安装、首个示例、何时使用 ThreadForge 以及默认失败/超时/取消语义说明。
-3. 重写 AI 安装说明，明确 Codex / Claude Code / Cursor / Copilot / Windsurf 该使用哪种集成文件以及如何安装。
-4. 对齐 `README.md`、`docs/api/README.md`、`docs/FEATURE.md` 的产品现状和 roadmap 口径，避免把未来能力写成已发布能力。
-5. 新增 `JoinStrategy` 与 `ScopeJoiner`，提供 `firstSuccess`、`quorum(n)` 与 `hedged(delay)` 高阶编排能力。
-6. 补充 joiner API 的测试、API 文档和 AI 集成规则说明。
-7. 新增 `examples/` 目录，提供并行聚合、first-success fallback、quorum voting、channel pipeline 等可运行示例。
-8. 新增 `benchmarks/` 目录，提供 JMH benchmark 与对 `ExecutorService` / `CompletableFuture` 的基线对比。
-9. README 补充 examples / benchmarks 入口和本地运行说明。
-10. 新增 `SlowTaskHook` / `SlowTaskEvent`，提供基于 `ThreadHook` 的慢任务检测能力。
-11. 新增 optional observability integrations：Micrometer hook 与 SLF4J / MDC bridge。
-12. `ThreadHook` 新增 `andThen(...)`，支持多个 hook 组合。
+1. 新增 `JoinStrategy` 与 `ScopeJoiner`，提供 `firstSuccess`、`quorum(n)` 与 `hedged(delay)` 高阶编排能力。
+2. 新增 `examples/` 目录，提供并行聚合、first-success fallback、quorum voting、channel pipeline 等可运行示例。
+3. 新增 `benchmarks/` 目录，提供 JMH benchmark 与对 `ExecutorService` / `CompletableFuture` 的基线对比。
+4. 新增 `SlowTaskHook` / `SlowTaskEvent`，提供基于 `ThreadHook` 的慢任务检测能力。
+5. 新增 optional observability integrations：Micrometer hook 与 SLF4J / MDC bridge。
+6. `ThreadHook` 新增 `andThen(...)`，支持多个 hook 组合。
+7. 重写 dependency-consumer 视角的 README 与接入文档，区分 `For Human`、`For AI` 与仓库 AI 规则文件安装说明。
+8. 对齐 `README.md`、`docs/api/README.md`、`docs/FEATURE.md`、`docs/ROADMAP.md` 与安装文档的版本和发布语义。
 
 ## [1.1.2] - 2026-03-11
 

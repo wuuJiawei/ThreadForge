@@ -7,7 +7,7 @@
 
 这是 ThreadForge 的完整 API 调用文档首页。
 
-当前 Maven 坐标：`pub.lighting:threadforge-core:1.1.2`。
+当前 Maven 坐标：`pub.lighting:threadforge-core:1.2.0`。
 
 ## 快速导航
 
@@ -52,7 +52,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - 默认 deadline：`Duration.ofSeconds(30)`
 - 默认调度器：`Scheduler.detect()`
 
-## main 分支新增能力
+## 当前版本重点能力
 
 - `JoinStrategy.firstSuccess()`
 - `JoinStrategy.quorum(n)`

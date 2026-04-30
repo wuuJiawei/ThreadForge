@@ -5,13 +5,13 @@
 
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-micrometer</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.0</version>
     <name>ThreadForge Micrometer Integration</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>8</maven.compiler.release>
-        <threadforge.version>1.1.2</threadforge.version>
+        <threadforge.version>1.2.0</threadforge.version>
         <micrometer.version>1.13.6</micrometer.version>
         <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
     </properties>

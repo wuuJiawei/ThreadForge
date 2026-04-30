@@ -4,7 +4,7 @@ This directory contains runnable, business-style examples for common ThreadForge
 
 ## Prerequisite
 
-Because the repository `main` branch is ahead of Maven Central `1.1.2`, install the local core artifact first:
+If you are running the examples against unpublished local changes, install the local core artifact first:
 
 ```bash
 mvn -B -ntp -DskipTests install

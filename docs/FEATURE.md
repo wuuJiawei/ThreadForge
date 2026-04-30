@@ -12,7 +12,7 @@ Current product line:
 
 ## Shipped Capabilities
 
-The following capabilities are already part of the released public API in `1.1.2`:
+The following capabilities are already part of the released public API in `1.2.0`:
 
 | Area | Capability | Public API |
 |---|---|---|
@@ -29,13 +29,6 @@ The following capabilities are already part of the released public API in `1.1.2
 | Observability | task lifecycle hooks and scope metrics | `ThreadHook`, `TaskInfo`, `ScopeMetricsSnapshot` |
 | Tracing | optional OpenTelemetry bridge | `withOpenTelemetry(...)`, `OpenTelemetryHook` |
 | Composition | basic `CompletableFuture` interop | `Task.thenApply`, `thenCompose`, `exceptionally` |
-
-## Available On Main
-
-The following capability is implemented on the `main` branch and is planned for the next release after `1.1.2`:
-
-| Area | Capability | Public API |
-|---|---|---|
 | Higher-order orchestration | first-success, quorum, and hedged fan-in | `JoinStrategy`, `ScopeJoiner`, `ThreadScope.join(...)` |
 | Adoption assets | runnable examples and JMH benchmarks | `examples/`, `benchmarks/` |
 | Observability ecosystem | slow-task hook, Micrometer, SLF4J / MDC bridge | `SlowTaskHook`, `SlowTaskEvent`, `integrations/` |
@@ -46,13 +39,9 @@ These are the main product gaps today:
 
 - no dedicated Spring Boot starter yet
 
-## Active Next Features
+## Next Focus
 
-The roadmap is tracked in [`docs/ROADMAP.md`](./ROADMAP.md). The next planned feature lines are:
-
-| Priority | Branch | Theme | Planned Outcome |
-|---|---|---|---|
-| P0 | `feature/docs-governance-onboarding` | Docs governance + onboarding | clearer README, human install guide, AI install guide |
+The roadmap is tracked in [`docs/ROADMAP.md`](./ROADMAP.md). The current next major focus is framework-level integration such as Spring Boot starter / Actuator support.
 
 ## Explicitly Deferred
 

@@ -16,13 +16,7 @@ If you want AI guidance for adding ThreadForge as a Maven/Gradle dependency to a
 | `threadforge.mdc` | your tool reads Cursor-style rule files | Cursor, Windsurf-compatible rule systems |
 | `threadforge-agents.md` | your tool reads AGENTS-style repository instructions | Codex CLI, Gemini CLI, Copilot instruction files, generic AGENTS consumers |
 
-All three files describe the current API surface on this repository's `main` branch.
-
-Important:
-
-- Maven Central latest is still `1.1.2`
-- `main` already contains the new joiner APIs (`JoinStrategy` / `ScopeJoiner`)
-- if your project is pinned to `1.1.2`, do not let the assistant generate joiner code yet
+All three files describe the current public API surface of ThreadForge `1.2.0`.
 
 ## What These Files Teach the Assistant
 
@@ -128,4 +122,4 @@ When the roadmap changes without a shipped API change:
 
 ## Version
 
-These files currently track the repository `main` branch, which is ahead of Maven Central `1.1.2`.
+These files currently track ThreadForge `1.2.0`.

@@ -5,14 +5,14 @@
 
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-examples</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.0</version>
     <name>ThreadForge Examples</name>
     <description>Runnable examples for ThreadForge.</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>8</maven.compiler.release>
-        <threadforge.version>1.1.2</threadforge.version>
+        <threadforge.version>1.2.0</threadforge.version>
         <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
         <exec.plugin.version>3.5.0</exec.plugin.version>
     </properties>

@@ -21,14 +21,14 @@ Maven:
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation("pub.lighting:threadforge-core:1.1.2")
+implementation("pub.lighting:threadforge-core:1.2.0")
 ```
 
 ## Import List

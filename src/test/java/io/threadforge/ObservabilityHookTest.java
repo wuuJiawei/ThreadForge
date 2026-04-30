@@ -47,6 +47,7 @@ class ObservabilityHookTest {
             assertEquals(Integer.valueOf(1), task.await());
         }
 
+        waitUntilSize(events, 4);
         assertEquals(4, events.size());
         assertEquals("left-start", events.get(0));
         assertEquals("right-start", events.get(1));
@@ -114,5 +115,17 @@ class ObservabilityHookTest {
             }
         }
         throw new AssertionError("Missing event for task: " + name);
+    }
+
+    private void waitUntilSize(List<String> events, int expectedSize) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(1).toNanos();
+        while (events.size() < expectedSize && System.nanoTime() < deadline) {
+            try {
+                Thread.sleep(10L);
+            } catch (InterruptedException interruptedException) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Interrupted while waiting for hook events", interruptedException);
+            }
+        }
     }
 }

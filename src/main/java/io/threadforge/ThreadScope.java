@@ -373,6 +373,20 @@ public final class ThreadScope implements AutoCloseable {
         return submit(name, callable, defaultTaskPriority, retryPolicy, null, id);
     }
 
+    /**
+     * 提交无返回值的匿名任务。
+     */
+    public Task<Void> submit(Runnable runnable) {
+        return submit(asCallable(runnable));
+    }
+
+    /**
+     * 提交无返回值的具名任务。
+     */
+    public Task<Void> submit(String name, Runnable runnable) {
+        return submit(name, asCallable(runnable));
+    }
+
     public <T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority) {
         long id = nextTaskId();
         return submit("task-" + id, callable, taskPriority, retryPolicy, null, id);
@@ -699,6 +713,17 @@ public final class ThreadScope implements AutoCloseable {
         }
 
         return task;
+    }
+
+    private static Callable<Void> asCallable(final Runnable runnable) {
+        Objects.requireNonNull(runnable, "runnable");
+        return new Callable<Void>() {
+            @Override
+            public Void call() {
+                runnable.run();
+                return null;
+            }
+        };
     }
 
     private <T> void runTask(

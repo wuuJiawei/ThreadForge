@@ -193,6 +193,19 @@ try (ThreadScope scope = ThreadScope.open()
   - 如果等待许可过程中被取消，会抛 `CancelledException`
   - 会自动传播提交线程中的 `Context`
 
+### `Task<Void> submit(Runnable runnable)`
+
+提交无返回值的匿名任务，自动命名为 `task-<id>`。
+
+### `Task<Void> submit(String name, Runnable runnable)`
+
+提交无返回值的具名任务。
+
+- 成功时 `Task<Void>.await()` 返回 `null`
+- 使用 scope 默认的任务优先级、重试策略和 deadline
+- 异常、取消、上下文传播和观测语义与 `Callable<T>` 任务一致
+- 需要任务级优先级、重试或超时覆盖时，继续使用 `Callable<T>` 重载
+
 ### `<T> Task<T> submit(Callable<T> callable, TaskPriority taskPriority)`
 
 提交匿名任务，并指定优先级。

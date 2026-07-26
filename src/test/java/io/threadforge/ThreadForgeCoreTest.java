@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +36,40 @@ class ThreadForgeCoreTest {
             assertEquals(TaskPriority.NORMAL, scope.defaultTaskPriority());
             assertEquals(Duration.ofSeconds(30), scope.deadline());
             assertNotNull(scope.scheduler());
+        }
+    }
+
+    @Test
+    void runnableTasksCanBeSubmitted() {
+        final AtomicInteger executions = new AtomicInteger();
+
+        try (ThreadScope scope = ThreadScope.open()) {
+            Task<Void> anonymous = scope.submit(() -> {
+                executions.incrementAndGet();
+            });
+            Task<Void> named = scope.submit("named-runnable", () -> {
+                executions.incrementAndGet();
+            });
+
+            scope.await(anonymous, named);
+
+            assertNull(anonymous.await());
+            assertNull(named.await());
+            assertEquals("named-runnable", named.name());
+            assertEquals(2, executions.get());
+        }
+    }
+
+    @Test
+    void runnableTaskFailureUsesExistingFailureSemantics() {
+        try (ThreadScope scope = ThreadScope.open()) {
+            Task<Void> task = scope.submit("failing-runnable", (Runnable) () -> {
+                throw new IllegalStateException("boom");
+            });
+
+            IllegalStateException failure = assertThrows(IllegalStateException.class, task::await);
+            assertEquals("boom", failure.getMessage());
+            assertTrue(task.isFailed());
         }
     }
 

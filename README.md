@@ -210,6 +210,8 @@ ThreadScope.open()
 ```java
 Task<T> submit(Callable<T> callable)
 Task<T> submit(String name, Callable<T> callable)
+Task<Void> submit(Runnable runnable)
+Task<Void> submit(String name, Runnable runnable)
 Task<T> submit(Callable<T> callable, TaskPriority taskPriority)
 Task<T> submit(String name, Callable<T> callable, TaskPriority taskPriority)
 Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy)
@@ -219,6 +221,8 @@ Task<T> submit(String name, Callable<T> callable, Duration timeout)
 Task<T> submit(Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)
 Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)
 ```
+
+`Runnable` 重载使用 scope 默认的优先级、重试策略和 deadline；需要任务级覆盖时继续使用 `Callable<T>` 重载。
 
 等待任务：
 

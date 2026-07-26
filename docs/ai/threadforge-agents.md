@@ -16,7 +16,8 @@ try (ThreadScope scope = ThreadScope.open()) {
 ## Key API
 
 - `ThreadScope.open().withFailurePolicy().withDeadline().withScheduler().withRetryPolicy().withConcurrencyLimit()`
-- `scope.submit(name, callable)` — submit a task
+- `scope.submit(name, callable)` — submit a value-returning task
+- `scope.submit(name, runnable)` — submit a basic no-result task and receive `Task<Void>`
 - `scope.await(tasks)` / `scope.awaitAll(tasks)` — wait for completion
 - `scope.joiner().firstSuccess(...)` — return first successful result, cancel unfinished siblings
 - `scope.joiner().quorum(n, ...)` — return once `n` tasks succeed
@@ -43,6 +44,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `RetryPolicy.maxAttempts` includes the first attempt (3 = 1 initial + 2 retries)
 - `Context` auto-propagates from submit thread to task thread
 - `ScopeJoiner` launches tasks inside the same `ThreadScope`; deadline, cancellation, retry, and hooks still apply
+- Basic `Runnable` submissions use scope defaults; use `Callable<T>` overloads for per-task priority, retry, or timeout overrides
 - `integrations/threadforge-micrometer` and `integrations/threadforge-slf4j` provide optional observability bridges without changing core semantics
 
 ## Scheduler

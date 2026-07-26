@@ -17,6 +17,7 @@ The following capabilities are already part of the released public API in `1.2.0
 | Area | Capability | Public API |
 |---|---|---|
 | Scope lifecycle | Structured task scope | `ThreadScope` |
+| Task submission | Value-returning and basic no-result tasks | `submit(Callable<T>)`, `submit(Runnable)` |
 | Task handle | Task state, await, cancel, interop | `Task<T>` |
 | Failure handling | Fail-fast, supervisor, aggregate modes | `FailurePolicy` |
 | Retry | Scope default retry and per-task override | `RetryPolicy` |

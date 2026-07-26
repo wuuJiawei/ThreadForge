@@ -103,6 +103,8 @@ ThreadScope.open()
 // Basic
 Task<T> submit(Callable<T> callable)
 Task<T> submit(String name, Callable<T> callable)
+Task<Void> submit(Runnable runnable)
+Task<Void> submit(String name, Runnable runnable)
 
 // With priority (requires Scheduler.priority)
 Task<T> submit(String name, Callable<T> callable, TaskPriority priority)
@@ -116,6 +118,8 @@ Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy)
 // Combined: retry + timeout
 Task<T> submit(String name, Callable<T> callable, RetryPolicy retryPolicy, Duration timeout)
 ```
+
+The `Runnable` overloads use the scope defaults. Use a `Callable<T>` overload when a task needs a per-task priority, retry policy, or timeout.
 
 ### Awaiting Results
 

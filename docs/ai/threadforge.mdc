@@ -18,7 +18,10 @@ try (ThreadScope scope = ThreadScope.open()
     .withDeadline(Duration.ofSeconds(2))) {
     Task<String> a = scope.submit("rpc-a", () -> fetchA());
     Task<String> b = scope.submit("rpc-b", () -> fetchB());
-    scope.await(a, b);
+    Task<Void> audit = scope.submit("audit", () -> {
+        writeAuditLog();
+    });
+    scope.await(a, b, audit);
     return a.await() + b.await();
 }
 ```
@@ -30,6 +33,7 @@ try (ThreadScope scope = ThreadScope.open()
 3. **Default deadline is 30s** — override with `.withDeadline()` or per-task `Duration` timeout
 4. **Default failure policy is `FAIL_FAST`** — first failure cancels remaining tasks and throws
 5. **Use `ScopeJoiner` for higher-order fan-in** — prefer `firstSuccess`, `quorum`, or `hedged` over handwritten cancellation races
+6. **Basic `Runnable` submission returns `Task<Void>`** — use `Callable<T>` overloads for per-task priority, retry, or timeout overrides
 
 ## FailurePolicy
 

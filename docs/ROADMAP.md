@@ -12,6 +12,10 @@
 - Human onboarding and AI onboarding are first-class product surfaces, not afterthoughts.
 - Framework-specific integrations stay outside `threadforge-core`.
 
+## Released In 1.2.1
+
+- basic anonymous and named `Runnable` submission through `ThreadScope.submit(...)`
+
 ## Released In 1.2.0
 
 - docs / onboarding cleanup

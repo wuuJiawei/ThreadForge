@@ -4,6 +4,10 @@
 
 规则：按时间倒序记录（最新版本在最上方）。
 
+## [1.2.1] - 2026-07-26
+
+1. `ThreadScope.submit(...)` 新增匿名和具名 `Runnable` 基础重载，返回 `Task<Void>` 并复用现有任务生命周期、失败、取消、上下文传播与观测语义。
+
 ## [1.2.0] - 2026-04-30
 
 1. 新增 `JoinStrategy` 与 `ScopeJoiner`，提供 `firstSuccess`、`quorum(n)` 与 `hedged(delay)` 高阶编排能力。

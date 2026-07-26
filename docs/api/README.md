@@ -18,7 +18,7 @@
 
 - `groupId`: `pub.lighting`
 - `artifactId`: `threadforge-core`
-- `version`: `1.2.0`
+- `version`: `1.2.1`
 
 ## 文档目标
 

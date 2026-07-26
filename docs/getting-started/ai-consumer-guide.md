@@ -12,7 +12,7 @@ repository: Maven Central
 
 Verified on 2026-04-30:
 
-- latest stable version on Maven Central: `1.2.0`
+- latest stable version on Maven Central: `1.2.1`
 - artifact page: [pub.lighting:threadforge-core](https://central.sonatype.com/artifact/pub.lighting/threadforge-core)
 
 ## Behavior Rules

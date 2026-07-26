@@ -1,7 +1,7 @@
 # ThreadForge Roadmap
 
-> Last updated: 2026-04-30
-> Planning baseline: post-`1.2.0`
+> Last updated: 2026-07-26
+> Planning baseline: post-`1.2.1`
 > Spring Boot starter / Actuator integration: deferred for a later phase
 
 ## Roadmap Principles

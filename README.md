@@ -1,7 +1,7 @@
 # ThreadForge
 
 [![Maven Central](https://img.shields.io/maven-central/v/pub.lighting/threadforge-core?label=Maven%20Central)](https://search.maven.org/artifact/pub.lighting/threadforge-core)
-[![Changelog](https://img.shields.io/badge/Changelog-v1.2.0-0ea5e9)](./CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-v1.2.1-0ea5e9)](./CHANGELOG.md)
 [![CI](https://github.com/wuuJiawei/ThreadForge/actions/workflows/ci.yml/badge.svg)](https://github.com/wuuJiawei/ThreadForge/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-8%2B-007396)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wuuJiawei/ThreadForge/blob/main/LICENSE)
@@ -26,20 +26,20 @@ ThreadForge 是一个减少多线程心智负担的结构化并发框架，目�
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```gradle
-implementation("pub.lighting:threadforge-core:1.2.0")
+implementation("pub.lighting:threadforge-core:1.2.1")
 ```
 
 ### Gradle Kotlin DSL
 
 ```kotlin
-implementation("pub.lighting:threadforge-core:1.2.0")
+implementation("pub.lighting:threadforge-core:1.2.1")
 ```
 
 ### Basic Usage
@@ -188,7 +188,7 @@ Optional observability integrations now live under [`integrations/`](./integrati
 
 说明：
 
-- 当前 Maven Central 版本是 `1.2.0`
+- 当前 Maven Central 版本是 `1.2.1`
 - `JoinStrategy` / `ScopeJoiner` 已属于当前发布能力
 
 ### ThreadScope
@@ -545,7 +545,7 @@ mvn verify
 
 ## Release 流程
 
-- release tag 格式固定为 `vX.Y.Z`，例如 `v1.2.0`
+- release tag 格式固定为 `vX.Y.Z`，例如 `v1.2.1`
 - `release.yml` 只接受 `main` 或 `master` 历史中的 tag commit，并要求 tag 版本与 `pom.xml` 中的 `project.version` 一致
 - 真实发版顺序是：先在本地执行 `mvn -B -ntp -P release clean deploy` 发布到 Maven Central，再 push 对应 tag 创建 GitHub Release
 - push tag 后会自动执行：`clean verify`、生成 release notes、创建 GitHub Release 并上传 jar 资产

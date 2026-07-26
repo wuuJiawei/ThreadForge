@@ -9,7 +9,7 @@ Verified on 2026-04-30:
 - repository: Maven Central
 - groupId: `pub.lighting`
 - artifactId: `threadforge-core`
-- latest stable version: `1.2.0`
+- latest stable version: `1.2.1`
 
 Reference:
 
@@ -23,7 +23,7 @@ Add this to `pom.xml`:
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
 </dependency>
 ```
 
@@ -32,7 +32,7 @@ Add this to `pom.xml`:
 Add this to `build.gradle`:
 
 ```gradle
-implementation("pub.lighting:threadforge-core:1.2.0")
+implementation("pub.lighting:threadforge-core:1.2.1")
 ```
 
 ## Gradle Kotlin DSL
@@ -40,7 +40,7 @@ implementation("pub.lighting:threadforge-core:1.2.0")
 Add this to `build.gradle.kts`:
 
 ```kotlin
-implementation("pub.lighting:threadforge-core:1.2.0")
+implementation("pub.lighting:threadforge-core:1.2.1")
 ```
 
 ## Basic Usage

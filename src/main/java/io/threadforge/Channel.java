@@ -40,10 +40,10 @@ public final class Channel<T> implements Iterable<T> {
      * Throws {@link ChannelClosedException} if the channel has been closed.
      */
     public void send(T value) {
-        lock.lock();
+        lockInterruptibly();
         try {
             while (queue.size() >= capacity && !closed) {
-                awaitUninterruptibly(notFull);
+                await(notFull);
             }
             if (closed) {
                 throw new ChannelClosedException("Channel is closed");
@@ -60,10 +60,10 @@ public final class Channel<T> implements Iterable<T> {
      * When channel is closed and drained, throws {@link ChannelClosedException}.
      */
     public T receive() {
-        lock.lock();
+        lockInterruptibly();
         try {
             while (queue.isEmpty() && !closed) {
-                awaitUninterruptibly(notEmpty);
+                await(notEmpty);
             }
             if (queue.isEmpty() && closed) {
                 throw new ChannelClosedException("Channel is closed and drained");
@@ -127,21 +127,21 @@ public final class Channel<T> implements Iterable<T> {
         };
     }
 
-    private static void awaitUninterruptibly(Condition condition) {
-        boolean interrupted = false;
+    private void lockInterruptibly() {
         try {
-            while (true) {
-                try {
-                    condition.await();
-                    return;
-                } catch (InterruptedException e) {
-                    interrupted = true;
-                }
-            }
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
+            lock.lockInterruptibly();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new CancelledException("Interrupted while waiting for channel lock", interrupted);
+        }
+    }
+
+    private static void await(Condition condition) {
+        try {
+            condition.await();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new CancelledException("Interrupted while waiting on channel", interrupted);
         }
     }
 }

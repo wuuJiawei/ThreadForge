@@ -26,6 +26,7 @@
 发送一个元素。
 
 - 缓冲满时阻塞
+- 等待线程被中断时保留中断标记并抛 `CancelledException`
 - 通道关闭后抛 `ChannelClosedException`
 
 ### `T receive()`
@@ -33,6 +34,7 @@
 接收一个元素。
 
 - 缓冲空且未关闭时阻塞
+- 等待线程被中断时保留中断标记并抛 `CancelledException`
 - 通道已关闭且已耗尽时抛 `ChannelClosedException`
 
 ### `void close()`

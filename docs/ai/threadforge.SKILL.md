@@ -236,6 +236,8 @@ channel.close();         // Signal no more sends
 // Iterable: for (T v : channel) { ... } stops after closed and drained
 ```
 
+Blocked `send`/`receive` calls are interruptible and surface cancellation as `CancelledException` while preserving the interrupt flag.
+
 ### Scheduling
 
 ```java

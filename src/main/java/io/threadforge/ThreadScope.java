@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
 
 /**
  * ThreadForge 的结构化并发作用域。
@@ -701,36 +700,43 @@ public final class ThreadScope implements AutoCloseable {
         final Task<T> task = new Task<T>(id, name, future);
         final TaskInfo info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
         final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
-        tasks.add(task);
-        future.whenComplete(new BiConsumer<T, Throwable>() {
+        final TaskExecution execution = new TaskExecution(task, executionContext.wrapRunnable(new Runnable() {
             @Override
-            public void accept(T value, Throwable throwable) {
+            public void run() {
+                runTask(task, info, callable, taskRetryPolicy);
+            }
+        }));
+        task.attachExecution(execution);
+        tasks.add(task);
+        task.whenExecutionFinished(new Runnable() {
+            @Override
+            public void run() {
                 tasks.remove(task);
-                if (timeoutTask != null) {
-                    timeoutTask.cancel();
+                if (permitAcquired && semaphore != null) {
+                    semaphore.release();
                 }
             }
         });
+        final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
+        if (timeoutTask != null) {
+            future.whenComplete(new java.util.function.BiConsumer<T, Throwable>() {
+                @Override
+                public void accept(T value, Throwable throwable) {
+                    timeoutTask.cancel();
+                }
+            });
+        }
 
         try {
             scheduler.executor().execute(Scheduler.prioritized(
-                executionContext.wrapRunnable(new Runnable() {
-                    @Override
-                    public void run() {
-                        runTask(task, info, callable, taskRetryPolicy, permitAcquired ? semaphore : null);
-                    }
-                }),
+                execution,
                 taskPriority,
                 id
             ));
         } catch (RejectedExecutionException rejectedExecutionException) {
-            if (permitAcquired && semaphore != null) {
-                semaphore.release();
+            if (task.completeFailure(rejectedExecutionException, true)) {
+                safeHookFailure(info, rejectedExecutionException, 0L);
             }
-            task.markFailed();
-            future.completeExceptionally(rejectedExecutionException);
-            safeHookFailure(info, rejectedExecutionException, 0L);
         }
 
         return task;
@@ -751,19 +757,13 @@ public final class ThreadScope implements AutoCloseable {
         Task<T> task,
         TaskInfo info,
         Callable<T> callable,
-        RetryPolicy retryPolicy,
-        Semaphore acquiredSemaphore
+        RetryPolicy retryPolicy
     ) {
         long started = System.nanoTime();
-        CompletableFuture<T> future = task.toCompletableFuture();
 
         try {
-            if (task.isCancelled() || token.isCancelled()) {
-                completeTaskCancelled(task, future, new CancelledException("Task cancelled before start"), info, started);
-                return;
-            }
-
-            if (!task.markRunning(Thread.currentThread())) {
+            if (task.state() != Task.State.RUNNING || token.isCancelled()) {
+                completeTaskCancelled(task, new CancelledException("Task cancelled before start"), info, started);
                 return;
             }
 
@@ -771,50 +771,40 @@ public final class ThreadScope implements AutoCloseable {
             token.throwIfCancelled();
 
             T value = RetryExecutor.execute(callable, retryPolicy, token);
-            if (future.complete(value)) {
-                task.markSuccess();
+            if (task.completeSuccess(value)) {
                 safeHookSuccess(info, elapsedNanos(started));
             }
         } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
-            completeTaskCancelled(task, future, new CancelledException("Task interrupted", interruptedException), info, started);
+            completeTaskCancelled(task, new CancelledException("Task interrupted", interruptedException), info, started);
         } catch (CancelledException cancelledException) {
-            completeTaskCancelled(task, future, cancelledException, info, started);
+            completeTaskCancelled(task, cancelledException, info, started);
         } catch (Throwable throwable) {
-            completeTaskFailure(task, future, throwable, info, started);
-        } finally {
-            if (acquiredSemaphore != null) {
-                acquiredSemaphore.release();
-            }
+            completeTaskFailure(task, throwable, info, started);
         }
     }
     private <T> void completeTaskCancelled(
         Task<T> task,
-        CompletableFuture<T> future,
         CancelledException cancelledException,
         TaskInfo info,
         long started
     ) {
-        if (future.completeExceptionally(cancelledException)) {
-            task.markCancelled();
+        if (task.completeCancelled(cancelledException)) {
             safeHookCancel(info, elapsedNanos(started));
             return;
         }
-        if (future.isCancelled() || task.state() == Task.State.CANCELLED) {
-            task.markCancelled();
+        if (task.state() == Task.State.CANCELLED) {
             safeHookCancel(info, elapsedNanos(started));
         }
     }
 
     private <T> void completeTaskFailure(
         Task<T> task,
-        CompletableFuture<T> future,
         Throwable throwable,
         TaskInfo info,
         long started
     ) {
-        if (future.completeExceptionally(throwable)) {
-            task.markFailed();
+        if (task.completeFailure(throwable, false)) {
             safeHookFailure(info, throwable, elapsedNanos(started));
         }
     }
@@ -827,9 +817,7 @@ public final class ThreadScope implements AutoCloseable {
             @Override
             public void run() {
                 TaskTimeoutException timeoutException = taskTimeoutException(info, timeout);
-                if (task.toCompletableFuture().completeExceptionally(timeoutException)) {
-                    task.markFailed();
-                    task.interruptRunner();
+                if (task.completeFailure(timeoutException, true)) {
                     dispatchHookFailure(info, timeoutException, timeout.toNanos());
                 }
             }
@@ -951,6 +939,10 @@ public final class ThreadScope implements AutoCloseable {
         }
     }
 
+    int trackedTaskCount() {
+        return tasks.size();
+    }
+
     private void ensureConfigurable() {
         ensureOpen();
         if (configLocked.get()) {
@@ -1056,6 +1048,29 @@ public final class ThreadScope implements AutoCloseable {
                 }
             });
         } catch (RejectedExecutionException ignored) {
+        }
+    }
+
+    private static final class TaskExecution extends FutureTask<Void> {
+        private final Task<?> task;
+
+        private TaskExecution(Task<?> task, Runnable runnable) {
+            super(runnable, null);
+            this.task = task;
+        }
+
+        @Override
+        public void run() {
+            Thread runner = Thread.currentThread();
+            if (!task.beginExecution(runner)) {
+                task.markExecutionFinished(runner);
+                return;
+            }
+            try {
+                super.run();
+            } finally {
+                task.markExecutionFinished(runner);
+            }
         }
     }
 

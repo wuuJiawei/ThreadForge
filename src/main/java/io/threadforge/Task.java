@@ -49,6 +49,7 @@ public final class Task<T> {
     private boolean executionEntered;
     private Future<?> execution;
     private Runnable executionFinishedCallback;
+    private Throwable terminalFailure;
 
     /** 包级构造函数，仅供 {@link ThreadScope} 创建任务句柄。 */
     Task(long id, String name, CompletableFuture<T> future) {
@@ -120,8 +121,10 @@ public final class Task<T> {
             }
             State previous = state;
             state = State.CANCELLED;
+            terminalFailure = new CancelledException("Task cancelled");
             if (!future.cancel(true)) {
                 state = previous;
+                terminalFailure = null;
                 return false;
             }
             runner = runnerThread;
@@ -272,8 +275,10 @@ public final class Task<T> {
             }
             State previous = state;
             state = State.FAILED;
+            terminalFailure = failure;
             if (!future.completeExceptionally(failure)) {
                 state = previous;
+                terminalFailure = null;
                 return false;
             }
             runner = runnerThread;
@@ -300,8 +305,10 @@ public final class Task<T> {
             }
             State previous = state;
             state = State.CANCELLED;
+            terminalFailure = cancellation;
             if (!future.completeExceptionally(cancellation)) {
                 state = previous;
+                terminalFailure = null;
                 return false;
             }
             return true;
@@ -387,6 +394,12 @@ public final class Task<T> {
     boolean hasRunnerThread() {
         synchronized (lifecycleLock) {
             return runnerThread != null;
+        }
+    }
+
+    Throwable terminalFailure() {
+        synchronized (lifecycleLock) {
+            return terminalFailure;
         }
     }
 

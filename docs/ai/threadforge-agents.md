@@ -28,6 +28,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `scope.joiner().quorum(n, ...)` — return once `n` tasks succeed
 - `scope.joiner().hedged(delay, primary, backup...)` — start one task now and release backup tasks after the hedge delay
 - `SlowTaskHook.create(threshold, consumer)` — emit events for tasks slower than a threshold
+- ThreadLocal hooks install and restore context on the same runner thread, including timeout/cancel paths
 - `hookA.andThen(hookB)` — compose multiple hooks
 - `task.await()` — get single task result
 - `scope.schedule(duration, callable)` — delayed execution

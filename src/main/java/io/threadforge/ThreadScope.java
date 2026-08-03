@@ -785,6 +785,7 @@ public final class ThreadScope implements AutoCloseable {
         final Task<T> task;
         final TaskInfo info;
         final TaskExecution execution;
+        final TaskHookState hookState;
 
         synchronized (lifecycleLock) {
             if (closed.get()) {
@@ -796,11 +797,12 @@ public final class ThreadScope implements AutoCloseable {
             final CompletableFuture<T> future = new CompletableFuture<T>();
             task = new Task<T>(id, name, future);
             info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
+            hookState = new TaskHookState(info, System.nanoTime());
             final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
             execution = new TaskExecution(task, executionContext.wrapRunnable(new Runnable() {
                 @Override
                 public void run() {
-                    runTask(task, info, callable, taskRetryPolicy);
+                    runTask(task, callable, taskRetryPolicy, hookState);
                 }
             }));
             task.attachExecution(execution);
@@ -808,13 +810,14 @@ public final class ThreadScope implements AutoCloseable {
             task.whenExecutionFinished(new Runnable() {
                 @Override
                 public void run() {
+                    hookState.finishAfterExecution(task);
                     tasks.remove(task);
                     if (permitAcquired && semaphore != null) {
                         semaphore.release();
                     }
                 }
             });
-            final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
+            final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout, hookState);
             if (timeoutTask != null) {
                 future.whenComplete(new java.util.function.BiConsumer<T, Throwable>() {
                     @Override
@@ -830,7 +833,7 @@ public final class ThreadScope implements AutoCloseable {
             scheduler.executor().execute(Scheduler.prioritized(execution, taskPriority, id));
         } catch (RejectedExecutionException rejectedExecutionException) {
             if (task.completeFailure(rejectedExecutionException, true)) {
-                safeHookFailure(info, rejectedExecutionException, 0L);
+                hookState.finishUnstarted(task);
             }
         }
         return task;
@@ -849,61 +852,43 @@ public final class ThreadScope implements AutoCloseable {
 
     private <T> void runTask(
         Task<T> task,
-        TaskInfo info,
         Callable<T> callable,
-        RetryPolicy retryPolicy
+        RetryPolicy retryPolicy,
+        TaskHookState hookState
     ) {
-        long started = System.nanoTime();
-
         try {
             if (task.state() != Task.State.RUNNING || token.isCancelled()) {
-                completeTaskCancelled(task, new CancelledException("Task cancelled before start"), info, started);
+                task.completeCancelled(new CancelledException("Task cancelled before start"));
                 return;
             }
-
-            safeHookStart(info);
+            if (!hookState.start(task)) {
+                return;
+            }
+            if (task.state() != Task.State.RUNNING) {
+                return;
+            }
             token.throwIfCancelled();
 
             T value = RetryExecutor.execute(callable, retryPolicy, token);
-            if (task.completeSuccess(value)) {
-                safeHookSuccess(info, elapsedNanos(started));
-            }
+            task.completeSuccess(value);
         } catch (InterruptedException interruptedException) {
             Thread.currentThread().interrupt();
-            completeTaskCancelled(task, new CancelledException("Task interrupted", interruptedException), info, started);
+            task.completeCancelled(new CancelledException("Task interrupted", interruptedException));
         } catch (CancelledException cancelledException) {
-            completeTaskCancelled(task, cancelledException, info, started);
+            task.completeCancelled(cancelledException);
         } catch (Throwable throwable) {
-            completeTaskFailure(task, throwable, info, started);
-        }
-    }
-    private <T> void completeTaskCancelled(
-        Task<T> task,
-        CancelledException cancelledException,
-        TaskInfo info,
-        long started
-    ) {
-        if (task.completeCancelled(cancelledException)) {
-            safeHookCancel(info, elapsedNanos(started));
-            return;
-        }
-        if (task.state() == Task.State.CANCELLED) {
-            safeHookCancel(info, elapsedNanos(started));
+            task.completeFailure(throwable, false);
+        } finally {
+            hookState.finishStarted(task);
         }
     }
 
-    private <T> void completeTaskFailure(
-        Task<T> task,
-        Throwable throwable,
-        TaskInfo info,
-        long started
+    private ScheduledTask scheduleTaskTimeout(
+        final Task<?> task,
+        final TaskInfo info,
+        final Duration timeout,
+        final TaskHookState hookState
     ) {
-        if (task.completeFailure(throwable, false)) {
-            safeHookFailure(info, throwable, elapsedNanos(started));
-        }
-    }
-
-    private ScheduledTask scheduleTaskTimeout(final Task<?> task, final TaskInfo info, final Duration timeout) {
         if (timeout == null) {
             return null;
         }
@@ -912,7 +897,7 @@ public final class ThreadScope implements AutoCloseable {
             public void run() {
                 TaskTimeoutException timeoutException = taskTimeoutException(info, timeout);
                 if (task.completeFailure(timeoutException, true)) {
-                    dispatchHookFailure(info, timeoutException, timeout.toNanos());
+                    hookState.finishTimeout(task, timeoutException, timeout.toNanos());
                 }
             }
         });
@@ -1142,6 +1127,80 @@ public final class ThreadScope implements AutoCloseable {
                 }
             });
         } catch (RejectedExecutionException ignored) {
+        }
+    }
+
+    private final class TaskHookState {
+        private final TaskInfo info;
+        private final long createdAtNanos;
+        private boolean started;
+        private boolean terminal;
+        private long startedAtNanos;
+
+        private TaskHookState(TaskInfo info, long createdAtNanos) {
+            this.info = info;
+            this.createdAtNanos = createdAtNanos;
+        }
+
+        private boolean start(Task<?> task) {
+            synchronized (this) {
+                if (terminal || task.state() != Task.State.RUNNING) {
+                    return false;
+                }
+                started = true;
+                startedAtNanos = System.nanoTime();
+            }
+            safeHookStart(info);
+            return true;
+        }
+
+        private void finishStarted(Task<?> task) {
+            long duration;
+            synchronized (this) {
+                if (!started || terminal) {
+                    return;
+                }
+                terminal = true;
+                duration = elapsedNanos(startedAtNanos);
+            }
+            emitTerminal(task, duration);
+        }
+
+        private void finishTimeout(Task<?> task, Throwable failure, long durationNanos) {
+            synchronized (this) {
+                if (started || terminal) {
+                    return;
+                }
+                terminal = true;
+            }
+            dispatchHookFailure(info, failure, durationNanos);
+        }
+
+        private void finishUnstarted(Task<?> task) {
+            synchronized (this) {
+                if (started || terminal) {
+                    return;
+                }
+                terminal = true;
+            }
+            emitTerminal(task, elapsedNanos(createdAtNanos));
+        }
+
+        private void finishAfterExecution(Task<?> task) {
+            if (task.state() == Task.State.CANCELLED) {
+                finishUnstarted(task);
+            }
+        }
+
+        private void emitTerminal(Task<?> task, long durationNanos) {
+            Task.State terminalState = task.state();
+            if (terminalState == Task.State.SUCCESS) {
+                safeHookSuccess(info, durationNanos);
+            } else if (terminalState == Task.State.FAILED) {
+                safeHookFailure(info, task.terminalFailure(), durationNanos);
+            } else if (terminalState == Task.State.CANCELLED) {
+                safeHookCancel(info, durationNanos);
+            }
         }
     }
 

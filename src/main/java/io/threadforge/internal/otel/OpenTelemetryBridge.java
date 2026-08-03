@@ -2,6 +2,9 @@ package io.threadforge.internal.otel;
 
 import io.threadforge.TaskInfo;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 /**
  * Reflection bridge for OpenTelemetry API.
  *
@@ -136,9 +139,28 @@ public final class OpenTelemetryBridge {
 
     private static Object invoke(Object target, String methodName, Class<?>[] argTypes, Object[] args) {
         try {
-            return target.getClass().getMethod(methodName, argTypes).invoke(target, args);
+            Method method = accessibleMethod(target.getClass(), methodName, argTypes);
+            return method == null ? null : method.invoke(target, args);
         } catch (Throwable ignored) {
             return null;
         }
+    }
+
+    private static Method accessibleMethod(Class<?> type, String methodName, Class<?>[] argTypes) {
+        try {
+            Method method = type.getMethod(methodName, argTypes);
+            if (Modifier.isPublic(method.getDeclaringClass().getModifiers())) {
+                return method;
+            }
+        } catch (NoSuchMethodException ignored) {
+        }
+        for (Class<?> current : type.getInterfaces()) {
+            Method method = accessibleMethod(current, methodName, argTypes);
+            if (method != null) {
+                return method;
+            }
+        }
+        Class<?> parent = type.getSuperclass();
+        return parent == null ? null : accessibleMethod(parent, methodName, argTypes);
     }
 }

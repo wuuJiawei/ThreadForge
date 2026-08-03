@@ -3,7 +3,7 @@
 Build first:
 
 ```bash
-mvn -B -ntp -DskipTests install
+mvn -B -ntp clean install
 mvn -B -ntp -f integrations/threadforge-slf4j/pom.xml compile
 ```
 
@@ -28,4 +28,7 @@ Behavior:
 - reads values from `Context`
 - installs them into MDC when the task starts
 - restores the previous MDC map when the task completes
+- restores on the same runner thread that installed MDC, including timeout and cancellation paths
+- keys hook state by both scope ID and task ID, so one hook can be shared across scopes
+- terminal events for tasks that never started do not clear the current thread's MDC
 - ignores non-string `Context` values

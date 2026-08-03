@@ -422,6 +422,8 @@ try (ThreadScope scope = ThreadScope.open()
 // Requires OpenTelemetry API on classpath
 ```
 
+ThreadLocal-style hooks are installed and restored on the same runner thread. A shared hook must distinguish tasks by both scope ID and task ID; timeout signals do not move context cleanup to the timer thread.
+
 ## Common Mistakes
 
 | Mistake | Fix |

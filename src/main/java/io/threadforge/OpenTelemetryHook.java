@@ -16,12 +16,12 @@ public final class OpenTelemetryHook implements ThreadHook {
 
     private final String instrumentationName;
     private final Object tracer;
-    private final ConcurrentMap<Long, SpanState> spans;
+    private final ConcurrentMap<String, SpanState> spans;
 
     private OpenTelemetryHook(String instrumentationName, Object tracer) {
         this.instrumentationName = instrumentationName;
         this.tracer = tracer;
-        this.spans = new ConcurrentHashMap<Long, SpanState>();
+        this.spans = new ConcurrentHashMap<String, SpanState>();
     }
 
     /**
@@ -58,7 +58,7 @@ public final class OpenTelemetryHook implements ThreadHook {
             return;
         }
         Object scope = OpenTelemetryBridge.spanMakeCurrent(span);
-        SpanState previous = spans.put(info.taskId(), new SpanState(span, scope));
+        SpanState previous = spans.put(key(info), new SpanState(span, scope));
         if (previous != null) {
             finish(previous, null, null, false);
         }
@@ -66,19 +66,19 @@ public final class OpenTelemetryHook implements ThreadHook {
 
     @Override
     public void onSuccess(TaskInfo info, Duration duration) {
-        SpanState spanState = spans.remove(info.taskId());
+        SpanState spanState = spans.remove(key(info));
         finish(spanState, duration, null, false);
     }
 
     @Override
     public void onFailure(TaskInfo info, Throwable error, Duration duration) {
-        SpanState spanState = spans.remove(info.taskId());
+        SpanState spanState = spans.remove(key(info));
         finish(spanState, duration, error, false);
     }
 
     @Override
     public void onCancel(TaskInfo info, Duration duration) {
-        SpanState spanState = spans.remove(info.taskId());
+        SpanState spanState = spans.remove(key(info));
         finish(spanState, duration, null, true);
     }
 
@@ -96,10 +96,14 @@ public final class OpenTelemetryHook implements ThreadHook {
             if (error != null) {
                 OpenTelemetryBridge.spanRecordFailure(spanState.span, error);
             }
-            OpenTelemetryBridge.spanEnd(spanState.span);
         } finally {
             OpenTelemetryBridge.closeScope(spanState.scope);
+            OpenTelemetryBridge.spanEnd(spanState.span);
         }
+    }
+
+    private String key(TaskInfo info) {
+        return info.scopeId() + ":" + info.taskId();
     }
 
     private String spanName(TaskInfo info) {

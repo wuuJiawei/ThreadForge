@@ -91,6 +91,7 @@ ThreadHook combined = SlowTaskHook.create(Duration.ofMillis(200), event -> {
 - `ThreadHook.andThen(...)` composes multiple hooks
 - `SlowTaskHook` emits events only when duration crosses the configured threshold
 - optional Micrometer and SLF4J / MDC integrations live under `integrations/`
+- ThreadLocal hook setup and cleanup run on the same task runner; hook state is scoped by scope ID plus task ID
 
 ## Context Propagation
 

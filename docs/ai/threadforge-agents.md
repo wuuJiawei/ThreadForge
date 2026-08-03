@@ -32,7 +32,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 
 ## FailurePolicy
 
-- `FAIL_FAST` (default) — first failure cancels all, throws
+- `FAIL_FAST` (default) — first completed failure cancels all, throws
 - `SUPERVISOR` — no auto-cancel, check `Outcome.hasFailures()`
 - `COLLECT_ALL` — wait all, throw `AggregateException`
 - `CANCEL_OTHERS` — cancel siblings, don't throw

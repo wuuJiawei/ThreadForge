@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -468,6 +470,9 @@ public final class ThreadScope implements AutoCloseable {
         if (taskList.isEmpty()) {
             return new Outcome(0, 0, 0, Collections.<Throwable>emptyList());
         }
+        if (failurePolicy == FailurePolicy.FAIL_FAST) {
+            return awaitFailFast(taskList);
+        }
 
         int succeeded = 0;
         int cancelled = 0;
@@ -514,6 +519,56 @@ public final class ThreadScope implements AutoCloseable {
         }
 
         return new Outcome(taskList.size(), succeeded, cancelled, failures);
+    }
+
+    private Outcome awaitFailFast(final List<Task<?>> taskList) {
+        final BlockingQueue<Task<?>> completions = new LinkedBlockingQueue<Task<?>>();
+        for (final Task<?> task : taskList) {
+            task.internalFuture().whenComplete(new java.util.function.BiConsumer<Object, Throwable>() {
+                @Override
+                public void accept(Object value, Throwable failure) {
+                    completions.offer(task);
+                }
+            });
+        }
+
+        int succeeded = 0;
+        int cancelled = 0;
+        for (int completed = 0; completed < taskList.size(); completed++) {
+            Task<?> task = takeCompletedTask(completions);
+            try {
+                task.await();
+                succeeded++;
+            } catch (CancelledException cancellation) {
+                cancelled++;
+            } catch (RuntimeException failure) {
+                cancelOthers(taskList, task);
+                throw failure;
+            } catch (Error failure) {
+                cancelOthers(taskList, task);
+                throw failure;
+            }
+        }
+
+        if (deadlineTriggered) {
+            throw new ScopeTimeoutException("ThreadScope deadline exceeded");
+        }
+        return new Outcome(taskList.size(), succeeded, cancelled, Collections.<Throwable>emptyList());
+    }
+
+    private Task<?> takeCompletedTask(BlockingQueue<Task<?>> completions) {
+        try {
+            Duration remaining = remainingDeadline();
+            Task<?> completed = completions.poll(remaining.toNanos(), TimeUnit.NANOSECONDS);
+            if (completed == null) {
+                triggerDeadline();
+                throw new ScopeTimeoutException("ThreadScope deadline exceeded");
+            }
+            return completed;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new CancelledException("Interrupted while waiting for scope tasks", interrupted);
+        }
     }
 
     public Outcome await(Task<?> first, Task<?>... rest) {

@@ -171,7 +171,7 @@ Joiner rules:
 
 | Policy | Behavior | Use Case |
 |---|---|---|
-| `FAIL_FAST` | First failure throws, cancel remaining | Default; fail-fast pipelines |
+| `FAIL_FAST` | First completed failure throws, cancel remaining | Default; fail-fast pipelines |
 | `COLLECT_ALL` | Wait all, throw `AggregateException` if any failed | Batch jobs needing all results |
 | `SUPERVISOR` | Never auto-cancel; failures in `Outcome` | Independent tasks, no cascading |
 | `CANCEL_OTHERS` | Cancel siblings on failure, don't throw | Fan-out with graceful degradation |

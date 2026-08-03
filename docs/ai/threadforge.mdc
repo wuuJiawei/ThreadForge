@@ -39,7 +39,7 @@ try (ThreadScope scope = ThreadScope.open()
 
 | Policy | Behavior |
 |---|---|
-| `FAIL_FAST` | First failure throws, cancel remaining |
+| `FAIL_FAST` | First completed failure throws, cancel remaining |
 | `COLLECT_ALL` | Wait all, throw `AggregateException` if any failed |
 | `SUPERVISOR` | Never auto-cancel; failures in `Outcome` |
 | `CANCEL_OTHERS` | Cancel siblings on failure, don't throw |

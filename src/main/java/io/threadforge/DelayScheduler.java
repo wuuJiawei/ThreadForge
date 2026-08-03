@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>用于承载 once/fixed-rate/fixed-delay 三类定时任务。
  * 在多个 scope 之间共享时是线程安全的。
  */
-public final class DelayScheduler {
+public final class DelayScheduler implements AutoCloseable {
 
     private static final DelayScheduler SHARED = new DelayScheduler(createSharedExecutor("threadforge-delay"), false);
     private static final DelayScheduler CONTROL = new DelayScheduler(createSharedExecutor("threadforge-control"), false);
@@ -146,12 +146,23 @@ public final class DelayScheduler {
     }
 
     /**
-     * 当当前调度器拥有执行器所有权时，关闭执行器。
+     * 关闭此调度器拥有的执行器。
+     *
+     * <p>{@link #shared()} 与 {@link #from(ScheduledExecutorService)} 不拥有执行器，
+     * 因此调用此方法不会关闭共享或外部执行器。重复关闭是安全的。
      */
-    void shutdownIfOwned() {
+    @Override
+    public void close() {
         if (ownsExecutor) {
             executor.shutdownNow();
         }
+    }
+
+    /**
+     * 当当前调度器拥有执行器所有权时，关闭执行器。
+     */
+    void shutdownIfOwned() {
+        close();
     }
 
     /**

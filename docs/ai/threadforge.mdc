@@ -57,6 +57,8 @@ Scheduler.from(executorService) // Wrap external executor
 
 An owned scheduler (`fixed`/`priority`) belongs to one scope and is closed with it. Use `from(...)` with a caller-managed executor when multiple scopes must share an executor. Submissions after shutdown are rejected.
 
+`DelayScheduler.singleThread()` is `AutoCloseable` and owns its executor. Closing `DelayScheduler.shared()` or `DelayScheduler.from(executor)` does not close the shared or external executor.
+
 ## RetryPolicy
 
 ```java

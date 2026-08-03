@@ -245,6 +245,8 @@ ScheduledTask scheduleAtFixedRate(Duration initial, Duration period, Runnable ru
 ScheduledTask scheduleWithFixedDelay(Duration initial, Duration delay, Runnable runnable)
 ```
 
+`DelayScheduler.singleThread()` 拥有底层线程并实现 `AutoCloseable`，应使用 try-with-resources；`shared()` 和 `from(executor)` 的 `close()` 不会关闭共享或外部执行器。
+
 优先级调度器：
 
 ```java

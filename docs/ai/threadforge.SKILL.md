@@ -258,6 +258,8 @@ ScheduledTask poll = scope.scheduleWithFixedDelay(
 t.cancel();
 ```
 
+For direct scheduling, `DelayScheduler.singleThread()` is owned and must be closed (prefer try-with-resources). Closing `DelayScheduler.shared()` or `DelayScheduler.from(executor)` does not close the shared or external executor.
+
 ### Task Composition
 
 ```java

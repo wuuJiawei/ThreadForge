@@ -60,6 +60,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `Scheduler.priority(n)` — priority-based pool (use with `TaskPriority`)
 - Owned schedulers (`fixed`/`priority`) belong to one scope and close with it; use `Scheduler.from(...)` for a caller-managed executor shared across scopes
 - Submissions to a shut-down scheduler are rejected instead of remaining pending
+- `DelayScheduler.singleThread()` is `AutoCloseable` and owned; closing `shared()` or `from(executor)` does not close shared/external executors
 
 ## Exceptions
 

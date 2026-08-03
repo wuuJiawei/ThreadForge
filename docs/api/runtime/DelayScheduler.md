@@ -7,14 +7,14 @@
 
 `DelayScheduler` 提供延迟和周期任务调度能力。
 
-- 类型：`public final class DelayScheduler`
+- 类型：`public final class DelayScheduler implements AutoCloseable`
 - 线程安全：可在多个 scope 间共享
 
 ## 工厂方法
 
 ### `static DelayScheduler singleThread()`
 
-创建单线程延迟调度器。
+创建拥有底层执行器的单线程延迟调度器。使用后应调用 `close()`，推荐 try-with-resources。
 
 ### `static DelayScheduler shared()`
 
@@ -26,6 +26,21 @@
 
 - 参数：`executor != null`
 - 生命周期：外部执行器由调用方负责关闭
+
+## 生命周期
+
+### `void close()`
+
+- `singleThread()`：关闭 owned executor，终止其线程；关闭后提交新任务会被拒绝
+- `shared()`：不关闭框架全局共享 executor
+- `from(executor)`：不关闭外部 executor
+- 重复调用是幂等的
+
+```java
+try (DelayScheduler scheduler = DelayScheduler.singleThread()) {
+    scheduler.schedule(Duration.ofMillis(10), () -> runOnce());
+}
+```
 
 ## 调度方法
 

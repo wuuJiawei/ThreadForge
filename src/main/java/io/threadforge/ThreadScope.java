@@ -18,6 +18,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -67,6 +69,7 @@ public final class ThreadScope implements AutoCloseable {
     private final Deque<Runnable> deferred;
     private final DefaultCancellationToken token;
     private final DelayScheduler delayScheduler;
+    private final DelayScheduler controlDelayScheduler;
     private final ScopeMetrics metrics;
 
     private volatile Scheduler scheduler;
@@ -103,6 +106,7 @@ public final class ThreadScope implements AutoCloseable {
         this.deadline = DEFAULT_DEADLINE;
         this.hook = NOOP_HOOK;
         this.delayScheduler = DelayScheduler.shared();
+        this.controlDelayScheduler = DelayScheduler.control();
         this.metrics = new ScopeMetrics();
         this.token = new DefaultCancellationToken(new Runnable() {
             @Override
@@ -558,7 +562,18 @@ public final class ThreadScope implements AutoCloseable {
         compactFinishedScheduledTasks();
         final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
 
-        ScheduledTask task = delayScheduler.schedule(delay, executionContext.wrapCallable(callable, token));
+        ScheduledTask task = scheduleDispatched(delay, new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    executionContext.wrapCallable(callable, token).call();
+                } catch (RuntimeException runtimeException) {
+                    throw runtimeException;
+                } catch (Exception exception) {
+                    throw new RuntimeException(exception);
+                }
+            }
+        });
         scheduledTasks.add(task);
         return task;
     }
@@ -570,7 +585,7 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        ScheduledTask task = delayScheduler.schedule(delay, executionContext.wrapRunnable(runnable, token));
+        ScheduledTask task = scheduleDispatched(delay, executionContext.wrapRunnable(runnable, token));
         scheduledTasks.add(task);
         return task;
     }
@@ -583,7 +598,10 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        ScheduledTask task = delayScheduler.scheduleAtFixedRate(initial, period, executionContext.wrapRunnable(runnable, token));
+        final DispatchingScheduledTask task = new DispatchingScheduledTask(
+            scheduler.executor(), executionContext.wrapRunnable(runnable, token)
+        );
+        task.bind(delayScheduler.scheduleAtFixedRate(initial, period, task));
         scheduledTasks.add(task);
         return task;
     }
@@ -596,7 +614,10 @@ public final class ThreadScope implements AutoCloseable {
         ensureOpen();
         compactFinishedScheduledTasks();
         final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        ScheduledTask task = delayScheduler.scheduleWithFixedDelay(initial, delay, executionContext.wrapRunnable(runnable, token));
+        final DispatchingScheduledTask task = new DispatchingScheduledTask(
+            scheduler.executor(), executionContext.wrapRunnable(runnable, token)
+        );
+        task.bind(delayScheduler.scheduleWithFixedDelay(initial, delay, task));
         scheduledTasks.add(task);
         return task;
     }
@@ -802,14 +823,14 @@ public final class ThreadScope implements AutoCloseable {
         if (timeout == null) {
             return null;
         }
-        return delayScheduler.schedule(timeout, new Runnable() {
+        return controlDelayScheduler.schedule(timeout, new Runnable() {
             @Override
             public void run() {
                 TaskTimeoutException timeoutException = taskTimeoutException(info, timeout);
                 if (task.toCompletableFuture().completeExceptionally(timeoutException)) {
                     task.markFailed();
                     task.interruptRunner();
-                    safeHookFailure(info, timeoutException, timeout.toNanos());
+                    dispatchHookFailure(info, timeoutException, timeout.toNanos());
                 }
             }
         });
@@ -875,7 +896,7 @@ public final class ThreadScope implements AutoCloseable {
         if (deadlineTriggerTask != null) {
             deadlineTriggerTask.cancel();
         }
-        deadlineTriggerTask = delayScheduler.schedule(deadline, new Runnable() {
+        deadlineTriggerTask = controlDelayScheduler.schedule(deadline, new Runnable() {
             @Override
             public void run() {
                 triggerDeadline();
@@ -1017,6 +1038,100 @@ public final class ThreadScope implements AutoCloseable {
         try {
             hook.onCancel(info, Duration.ofNanos(durationNanos));
         } catch (Throwable ignored) {
+        }
+    }
+
+    private ScheduledTask scheduleDispatched(Duration delay, Runnable runnable) {
+        final DispatchingScheduledTask task = new DispatchingScheduledTask(scheduler.executor(), runnable);
+        task.bind(delayScheduler.schedule(delay, task));
+        return task;
+    }
+
+    private void dispatchHookFailure(final TaskInfo info, final Throwable throwable, final long durationNanos) {
+        try {
+            scheduler.executor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    safeHookFailure(info, throwable, durationNanos);
+                }
+            });
+        } catch (RejectedExecutionException ignored) {
+        }
+    }
+
+    private static final class DispatchingScheduledTask implements ScheduledTask, Runnable {
+        private final ExecutorService executor;
+        private final Runnable command;
+        private final AtomicBoolean cancelled;
+        private final Queue<FutureTask<Void>> dispatched;
+        private volatile ScheduledTask timer;
+
+        private DispatchingScheduledTask(ExecutorService executor, Runnable command) {
+            this.executor = executor;
+            this.command = command;
+            this.cancelled = new AtomicBoolean();
+            this.dispatched = new ConcurrentLinkedQueue<FutureTask<Void>>();
+        }
+
+        private void bind(ScheduledTask timer) {
+            this.timer = timer;
+            if (cancelled.get()) {
+                timer.cancel();
+            }
+        }
+
+        @Override
+        public void run() {
+            if (cancelled.get()) {
+                return;
+            }
+            FutureTask<Void> work = new DispatchedWork(command);
+            dispatched.add(work);
+            if (cancelled.get()) {
+                work.cancel(true);
+                return;
+            }
+            try {
+                executor.execute(work);
+            } catch (RejectedExecutionException rejected) {
+                work.cancel(false);
+                throw rejected;
+            }
+        }
+
+        @Override
+        public boolean cancel() {
+            boolean changed = cancelled.compareAndSet(false, true);
+            ScheduledTask currentTimer = timer;
+            if (currentTimer != null) {
+                changed |= currentTimer.cancel();
+            }
+            for (FutureTask<Void> work : dispatched) {
+                changed |= work.cancel(true);
+            }
+            return changed;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        @Override
+        public boolean isDone() {
+            ScheduledTask currentTimer = timer;
+            return cancelled.get() || (currentTimer != null && currentTimer.isDone() && dispatched.isEmpty());
+        }
+
+        private final class DispatchedWork extends FutureTask<Void> {
+            private DispatchedWork(Runnable runnable) {
+                super(runnable, null);
+            }
+
+            @Override
+            protected void done() {
+                dispatched.remove(this);
+            }
         }
     }
 }

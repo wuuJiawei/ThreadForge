@@ -19,7 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class DelayScheduler {
 
-    private static final DelayScheduler SHARED = new DelayScheduler(createSharedExecutor(), false);
+    private static final DelayScheduler SHARED = new DelayScheduler(createSharedExecutor("threadforge-delay"), false);
+    private static final DelayScheduler CONTROL = new DelayScheduler(createSharedExecutor("threadforge-control"), false);
 
     private final ScheduledExecutorService executor;
     private final boolean ownsExecutor;
@@ -48,6 +49,10 @@ public final class DelayScheduler {
      */
     public static DelayScheduler shared() {
         return SHARED;
+    }
+
+    static DelayScheduler control() {
+        return CONTROL;
     }
 
     /**
@@ -152,10 +157,10 @@ public final class DelayScheduler {
     /**
      * 创建框架默认共享的单线程调度执行器。
      */
-    private static ScheduledExecutorService createSharedExecutor() {
+    private static ScheduledExecutorService createSharedExecutor(String threadName) {
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(
             1,
-            new NamedThreadFactory("threadforge-delay")
+            new NamedThreadFactory(threadName)
         );
         executor.setRemoveOnCancelPolicy(true);
         executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);

@@ -491,6 +491,9 @@ public final class ThreadScope implements AutoCloseable {
                 triggerDeadline();
                 throw new ScopeTimeoutException("ThreadScope deadline exceeded");
             } catch (CancelledException cancelledException) {
+                if (Thread.currentThread().isInterrupted()) {
+                    throw cancelledException;
+                }
                 cancelled++;
             } catch (RuntimeException failure) {
                 if (failurePolicy == FailurePolicy.FAIL_FAST) {

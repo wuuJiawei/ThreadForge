@@ -128,6 +128,7 @@ String id = Context.get("traceId"); // "req-1001"
 - `CompletableFuture.allOf()` → `scope.awaitAll(tasks)`
 - `task.toCompletableFuture()` is observation-only; use `task.cancel()` to cancel the task
 - Blocking `Channel.send/receive` calls are interruptible and throw `CancelledException`
+- Interrupting an `await` caller does not mark target tasks cancelled
 - `shutdownNow()` → `scope.close()` (try-with-resources)
 - Manual retry loops → `RetryPolicy`
 - Manual timeout → `withDeadline()` or per-task `Duration`

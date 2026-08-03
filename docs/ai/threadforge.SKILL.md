@@ -444,8 +444,10 @@ try (ThreadScope scope = ThreadScope.open()
 | `CompletableFuture.get()` | `task.await()` |
 | `CompletableFuture.allOf()` | `scope.await(tasks)` / `scope.awaitAll(tasks)` |
 
-`task.toCompletableFuture()` is an observation-only mirror. Do not use it to complete or cancel the underlying task; call `task.cancel()` for framework-aware cancellation.
 | `ExecutorService.shutdownNow()` | `scope.close()` (try-with-resources) |
 | `ThreadLocal` manual propagation | `Context.put/get` (auto-propagated) |
 | Custom retry loops | `RetryPolicy` + `scope.withRetryPolicy()` |
 | Manual timeout management | `scope.withDeadline()` or per-task `Duration` timeout |
+
+`task.toCompletableFuture()` is an observation-only mirror. Do not use it to complete or cancel the underlying task; call `task.cancel()` for framework-aware cancellation.
+Interrupting a thread blocked in `task.await()` or `scope.await(...)` throws `CancelledException` without changing target task states.

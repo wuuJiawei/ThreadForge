@@ -257,6 +257,7 @@ try (ThreadScope scope = ThreadScope.open()
   - `TaskTimeoutException`：任务级超时
   - `RuntimeException`：`FAIL_FAST` 下的首个失败
   - `AggregateException`：`COLLECT_ALL` 下有失败
+- 等待线程被中断时保留中断标记并立即抛 `CancelledException`，不会修改目标任务状态
 
 ### `Outcome await(Task<?> first, Task<?>... rest)`
 

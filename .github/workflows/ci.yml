@@ -45,3 +45,32 @@ jobs:
             target/*.jar
             target/site/jacoco/**
           if-no-files-found: error
+
+  auxiliary-modules:
+    name: Verify integrations, examples, and benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Temurin JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Install current core
+        run: mvn -B -ntp clean install
+
+      - name: Test SLF4J integration
+        run: mvn -B -ntp -f integrations/threadforge-slf4j/pom.xml clean verify
+
+      - name: Test Micrometer integration
+        run: mvn -B -ntp -f integrations/threadforge-micrometer/pom.xml clean verify
+
+      - name: Compile examples
+        run: mvn -B -ntp -f examples/pom.xml clean package
+
+      - name: Compile benchmarks
+        run: mvn -B -ntp -f benchmarks/pom.xml clean package -DskipTests

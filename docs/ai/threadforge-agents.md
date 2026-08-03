@@ -22,6 +22,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `Channel.send/receive` — blocking waits are interruptible and throw `CancelledException`
 - `task.await()` / `scope.await(...)` — caller interruption propagates without changing target task states
 - `scope.close()` — waits for started work to exit before deferred cleanup; interruption-ignoring code keeps it blocked
+- Registrations racing with `close()` either succeed and are cleaned up or fail with `IllegalStateException`
 - `scope.await(tasks)` / `scope.awaitAll(tasks)` — wait for completion
 - `scope.joiner().firstSuccess(...)` — return first successful result, cancel unfinished siblings
 - `scope.joiner().quorum(n, ...)` — return once `n` tasks succeed

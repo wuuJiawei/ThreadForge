@@ -64,6 +64,7 @@ public final class ThreadScope implements AutoCloseable {
     private final long scopeId;
     private final AtomicLong taskIdGen;
     private final AtomicBoolean closed;
+    private final Object lifecycleLock;
     private final AtomicBoolean configLocked;
     private final Queue<Task<?>> tasks;
     private final Queue<ScheduledTask> scheduledTasks;
@@ -96,6 +97,7 @@ public final class ThreadScope implements AutoCloseable {
         this.scopeId = SCOPE_IDS.getAndIncrement();
         this.taskIdGen = new AtomicLong(1L);
         this.closed = new AtomicBoolean(false);
+        this.lifecycleLock = new Object();
         this.configLocked = new AtomicBoolean(false);
         this.tasks = new ConcurrentLinkedQueue<Task<?>>();
         this.scheduledTasks = new ConcurrentLinkedQueue<ScheduledTask>();
@@ -360,8 +362,10 @@ public final class ThreadScope implements AutoCloseable {
      */
     public void defer(Runnable cleanup) {
         Objects.requireNonNull(cleanup, "cleanup");
-        ensureOpen();
-        deferred.addFirst(cleanup);
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            deferred.addFirst(cleanup);
+        }
     }
 
     private long nextTaskId() {
@@ -615,36 +619,39 @@ public final class ThreadScope implements AutoCloseable {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(callable, "callable");
         lockConfiguration();
-        ensureOpen();
-        compactFinishedScheduledTasks();
-        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-
-        ScheduledTask task = scheduleDispatched(delay, new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    executionContext.wrapCallable(callable, token).call();
-                } catch (RuntimeException runtimeException) {
-                    throw runtimeException;
-                } catch (Exception exception) {
-                    throw new RuntimeException(exception);
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            compactFinishedScheduledTasks();
+            final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+            ScheduledTask task = scheduleDispatched(delay, new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        executionContext.wrapCallable(callable, token).call();
+                    } catch (RuntimeException runtimeException) {
+                        throw runtimeException;
+                    } catch (Exception exception) {
+                        throw new RuntimeException(exception);
+                    }
                 }
-            }
-        });
-        scheduledTasks.add(task);
-        return task;
+            });
+            scheduledTasks.add(task);
+            return task;
+        }
     }
 
     public ScheduledTask schedule(Duration delay, final Runnable runnable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
         lockConfiguration();
-        ensureOpen();
-        compactFinishedScheduledTasks();
-        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        ScheduledTask task = scheduleDispatched(delay, executionContext.wrapRunnable(runnable, token));
-        scheduledTasks.add(task);
-        return task;
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            compactFinishedScheduledTasks();
+            final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+            ScheduledTask task = scheduleDispatched(delay, executionContext.wrapRunnable(runnable, token));
+            scheduledTasks.add(task);
+            return task;
+        }
     }
 
     public ScheduledTask scheduleAtFixedRate(Duration initial, Duration period, final Runnable runnable) {
@@ -652,15 +659,17 @@ public final class ThreadScope implements AutoCloseable {
         Objects.requireNonNull(period, "period");
         Objects.requireNonNull(runnable, "runnable");
         lockConfiguration();
-        ensureOpen();
-        compactFinishedScheduledTasks();
-        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        final DispatchingScheduledTask task = new DispatchingScheduledTask(
-            scheduler.executor(), executionContext.wrapRunnable(runnable, token)
-        );
-        task.bind(delayScheduler.scheduleAtFixedRate(initial, period, task));
-        scheduledTasks.add(task);
-        return task;
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            compactFinishedScheduledTasks();
+            final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+            final DispatchingScheduledTask task = new DispatchingScheduledTask(
+                scheduler.executor(), executionContext.wrapRunnable(runnable, token)
+            );
+            task.bind(delayScheduler.scheduleAtFixedRate(initial, period, task));
+            scheduledTasks.add(task);
+            return task;
+        }
     }
 
     public ScheduledTask scheduleWithFixedDelay(Duration initial, Duration delay, final Runnable runnable) {
@@ -668,29 +677,38 @@ public final class ThreadScope implements AutoCloseable {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
         lockConfiguration();
-        ensureOpen();
-        compactFinishedScheduledTasks();
-        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        final DispatchingScheduledTask task = new DispatchingScheduledTask(
-            scheduler.executor(), executionContext.wrapRunnable(runnable, token)
-        );
-        task.bind(delayScheduler.scheduleWithFixedDelay(initial, delay, task));
-        scheduledTasks.add(task);
-        return task;
+        synchronized (lifecycleLock) {
+            ensureOpen();
+            compactFinishedScheduledTasks();
+            final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+            final DispatchingScheduledTask task = new DispatchingScheduledTask(
+                scheduler.executor(), executionContext.wrapRunnable(runnable, token)
+            );
+            task.bind(delayScheduler.scheduleWithFixedDelay(initial, delay, task));
+            scheduledTasks.add(task);
+            return task;
+        }
     }
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
-            return;
+        List<Task<?>> closingTasks;
+        List<ScheduledTask> closingScheduledTasks;
+        List<Runnable> closingDeferred;
+        synchronized (lifecycleLock) {
+            if (!closed.compareAndSet(false, true)) {
+                return;
+            }
+            closingTasks = new ArrayList<Task<?>>(tasks);
+            closingScheduledTasks = new ArrayList<ScheduledTask>(scheduledTasks);
+            closingDeferred = new ArrayList<Runnable>(deferred);
         }
 
         Throwable primary = null;
-        List<Task<?>> closingTasks = new ArrayList<Task<?>>(tasks);
 
         token.cancel();
 
-        for (ScheduledTask scheduledTask : scheduledTasks) {
+        for (ScheduledTask scheduledTask : closingScheduledTasks) {
             try {
                 scheduledTask.cancel();
             } catch (Throwable t) {
@@ -708,7 +726,7 @@ public final class ThreadScope implements AutoCloseable {
             }
         }
 
-        for (ScheduledTask scheduledTask : scheduledTasks) {
+        for (ScheduledTask scheduledTask : closingScheduledTasks) {
             if (scheduledTask instanceof DispatchingScheduledTask) {
                 ((DispatchingScheduledTask) scheduledTask).awaitDispatchedWork();
             }
@@ -718,7 +736,7 @@ public final class ThreadScope implements AutoCloseable {
             task.awaitExecutionFinished();
         }
 
-        for (Runnable cleanup : deferred) {
+        for (Runnable cleanup : closingDeferred) {
             try {
                 cleanup.run();
             } catch (Throwable t) {
@@ -764,50 +782,57 @@ public final class ThreadScope implements AutoCloseable {
         final boolean permitAcquired = acquireSubmissionPermit(semaphore);
         final RetryPolicy taskRetryPolicy = retryPolicy;
         final Duration taskTimeout = timeout;
+        final Task<T> task;
+        final TaskInfo info;
+        final TaskExecution execution;
 
-        final CompletableFuture<T> future = new CompletableFuture<T>();
-        final Task<T> task = new Task<T>(id, name, future);
-        final TaskInfo info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
-        final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
-        final TaskExecution execution = new TaskExecution(task, executionContext.wrapRunnable(new Runnable() {
-            @Override
-            public void run() {
-                runTask(task, info, callable, taskRetryPolicy);
-            }
-        }));
-        task.attachExecution(execution);
-        tasks.add(task);
-        task.whenExecutionFinished(new Runnable() {
-            @Override
-            public void run() {
-                tasks.remove(task);
+        synchronized (lifecycleLock) {
+            if (closed.get()) {
                 if (permitAcquired && semaphore != null) {
                     semaphore.release();
                 }
+                ensureOpen();
             }
-        });
-        final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
-        if (timeoutTask != null) {
-            future.whenComplete(new java.util.function.BiConsumer<T, Throwable>() {
+            final CompletableFuture<T> future = new CompletableFuture<T>();
+            task = new Task<T>(id, name, future);
+            info = new TaskInfo(scopeId, id, name, Instant.now(), scheduler.name());
+            final ExecutionContextCarrier executionContext = ExecutionContextCarrier.capture();
+            execution = new TaskExecution(task, executionContext.wrapRunnable(new Runnable() {
                 @Override
-                public void accept(T value, Throwable throwable) {
-                    timeoutTask.cancel();
+                public void run() {
+                    runTask(task, info, callable, taskRetryPolicy);
+                }
+            }));
+            task.attachExecution(execution);
+            tasks.add(task);
+            task.whenExecutionFinished(new Runnable() {
+                @Override
+                public void run() {
+                    tasks.remove(task);
+                    if (permitAcquired && semaphore != null) {
+                        semaphore.release();
+                    }
                 }
             });
+            final ScheduledTask timeoutTask = scheduleTaskTimeout(task, info, taskTimeout);
+            if (timeoutTask != null) {
+                future.whenComplete(new java.util.function.BiConsumer<T, Throwable>() {
+                    @Override
+                    public void accept(T value, Throwable throwable) {
+                        timeoutTask.cancel();
+                    }
+                });
+            }
+
         }
 
         try {
-            scheduler.executor().execute(Scheduler.prioritized(
-                execution,
-                taskPriority,
-                id
-            ));
+            scheduler.executor().execute(Scheduler.prioritized(execution, taskPriority, id));
         } catch (RejectedExecutionException rejectedExecutionException) {
             if (task.completeFailure(rejectedExecutionException, true)) {
                 safeHookFailure(info, rejectedExecutionException, 0L);
             }
         }
-
         return task;
     }
 

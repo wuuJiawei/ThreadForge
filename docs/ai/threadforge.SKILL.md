@@ -452,3 +452,4 @@ try (ThreadScope scope = ThreadScope.open()
 `task.toCompletableFuture()` is an observation-only mirror. Do not use it to complete or cancel the underlying task; call `task.cancel()` for framework-aware cancellation.
 Interrupting a thread blocked in `task.await()` or `scope.await(...)` throws `CancelledException` without changing target task states.
 `scope.close()` waits for started work to physically exit before deferred cleanup; code that ignores interruption keeps close blocked.
+Registrations racing with close either succeed and are cleaned up, or fail with `IllegalStateException`; no resource is accepted after close.

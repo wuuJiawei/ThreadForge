@@ -46,6 +46,7 @@ try (ThreadScope scope = ThreadScope.open()
 - `deadline = Duration.ofSeconds(30)`
 - 自动传播 `Context`（提交/调度时捕获，执行时恢复）
 - 作用域关闭时自动取消未完成任务和计划任务
+- `submit`、`schedule*`、`defer` 与 `close` 原子竞争：注册成功必由关闭流程处理，关闭先发生则注册抛 `IllegalStateException`
 
 ## API 清单
 

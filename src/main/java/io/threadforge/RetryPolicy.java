@@ -1,5 +1,7 @@
 package io.threadforge;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -9,6 +11,8 @@ import java.util.Objects;
  * <p>A policy is immutable and can be reused across scopes/tasks.
  */
 public final class RetryPolicy {
+
+    private static final BigInteger NANOS_PER_SECOND = BigInteger.valueOf(1_000_000_000L);
 
     /**
      * Decide whether to retry after a failed attempt.
@@ -192,22 +196,14 @@ public final class RetryPolicy {
             if (maxDelay.isNegative() || maxDelay.isZero()) {
                 throw new IllegalArgumentException("maxDelay must be > 0");
             }
-            if (multiplier < 1.0d) {
-                throw new IllegalArgumentException("multiplier must be >= 1.0");
+            if (Double.isNaN(multiplier) || Double.isInfinite(multiplier) || multiplier < 1.0d) {
+                throw new IllegalArgumentException("multiplier must be finite and >= 1.0");
             }
             this.backoffStrategy = new BackoffStrategy() {
                 @Override
                 public Duration nextDelay(int attempt, Throwable failure) {
                     int exponent = Math.max(0, attempt - 1);
-                    double computed = initialDelay.toNanos() * Math.pow(multiplier, exponent);
-                    if (Double.isInfinite(computed) || computed >= Long.MAX_VALUE) {
-                        return maxDelay;
-                    }
-                    long delayNanos = Math.min((long) computed, maxDelay.toNanos());
-                    if (delayNanos <= 0L) {
-                        return Duration.ZERO;
-                    }
-                    return Duration.ofNanos(delayNanos);
+                    return exponentialDelay(initialDelay, multiplier, exponent, maxDelay);
                 }
             };
             return this;
@@ -216,5 +212,43 @@ public final class RetryPolicy {
         public RetryPolicy build() {
             return new RetryPolicy(maxAttempts, retryCondition, backoffStrategy);
         }
+    }
+
+    private static Duration exponentialDelay(
+        Duration initialDelay,
+        double multiplier,
+        int exponent,
+        Duration maxDelay
+    ) {
+        if (initialDelay.isZero()) {
+            return Duration.ZERO;
+        }
+        if (initialDelay.compareTo(maxDelay) >= 0) {
+            return maxDelay;
+        }
+        if (exponent == 0 || multiplier == 1.0d) {
+            return initialDelay;
+        }
+
+        double factor = Math.pow(multiplier, exponent);
+        if (Double.isInfinite(factor)) {
+            return maxDelay;
+        }
+
+        BigDecimal computedNanos = new BigDecimal(toNanos(initialDelay))
+            .multiply(BigDecimal.valueOf(factor));
+        BigInteger maxNanos = toNanos(maxDelay);
+        if (computedNanos.compareTo(new BigDecimal(maxNanos)) >= 0) {
+            return maxDelay;
+        }
+
+        BigInteger[] secondsAndNanos = computedNanos.toBigInteger().divideAndRemainder(NANOS_PER_SECOND);
+        return Duration.ofSeconds(secondsAndNanos[0].longValueExact(), secondsAndNanos[1].longValue());
+    }
+
+    private static BigInteger toNanos(Duration duration) {
+        return BigInteger.valueOf(duration.getSeconds())
+            .multiply(NANOS_PER_SECOND)
+            .add(BigInteger.valueOf(duration.getNano()));
     }
 }

@@ -192,6 +192,7 @@ RetryPolicy.builder()                                          // Full customiza
 ```
 
 Note: `maxAttempts` includes the first attempt. CancelledException and Error are never retried by default.
+Exponential-backoff multipliers must be finite and at least `1.0`; computed delays are clamped to `maxDelay` without numeric overflow.
 
 ### Scheduler
 

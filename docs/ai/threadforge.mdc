@@ -69,6 +69,7 @@ RetryPolicy.exponentialBackoff(3, initial, 2.0, maxDelay)  // Exponential backof
 ```
 
 Note: `maxAttempts` includes the first attempt (3 = 1 initial + 2 retries).
+Exponential-backoff multipliers must be finite and at least `1.0`; computed delays are clamped to `maxDelay` without numeric overflow.
 
 ## ScopeJoiner
 

@@ -48,6 +48,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - Always use try-with-resources for `ThreadScope`
 - Default deadline is 30 seconds — override with `.withDeadline()`
 - `RetryPolicy.maxAttempts` includes the first attempt (3 = 1 initial + 2 retries)
+- Exponential-backoff multipliers must be finite and at least `1.0`; delays clamp safely to `maxDelay`
 - `Context` auto-propagates from submit thread to task thread
 - `ScopeJoiner` launches tasks inside the same `ThreadScope`; deadline, cancellation, retry, and hooks still apply
 - Basic `Runnable` submissions use scope defaults; use `Callable<T>` overloads for per-task priority, retry, or timeout overrides

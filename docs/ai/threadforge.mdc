@@ -126,6 +126,7 @@ String id = Context.get("traceId"); // "req-1001"
 - `ExecutorService.submit()` → `scope.submit()`
 - `CompletableFuture.get()` → `task.await()`
 - `CompletableFuture.allOf()` → `scope.awaitAll(tasks)`
+- `task.toCompletableFuture()` is observation-only; use `task.cancel()` to cancel the task
 - `shutdownNow()` → `scope.close()` (try-with-resources)
 - Manual retry loops → `RetryPolicy`
 - Manual timeout → `withDeadline()` or per-task `Duration`

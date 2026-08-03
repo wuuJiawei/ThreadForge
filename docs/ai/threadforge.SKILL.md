@@ -441,6 +441,8 @@ try (ThreadScope scope = ThreadScope.open()
 | `ExecutorService.submit()` | `scope.submit()` |
 | `CompletableFuture.get()` | `task.await()` |
 | `CompletableFuture.allOf()` | `scope.await(tasks)` / `scope.awaitAll(tasks)` |
+
+`task.toCompletableFuture()` is an observation-only mirror. Do not use it to complete or cancel the underlying task; call `task.cancel()` for framework-aware cancellation.
 | `ExecutorService.shutdownNow()` | `scope.close()` (try-with-resources) |
 | `ThreadLocal` manual propagation | `Context.put/get` (auto-propagated) |
 | Custom retry loops | `RetryPolicy` + `scope.withRetryPolicy()` |

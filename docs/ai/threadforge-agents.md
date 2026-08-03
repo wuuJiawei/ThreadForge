@@ -18,6 +18,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `ThreadScope.open().withFailurePolicy().withDeadline().withScheduler().withRetryPolicy().withConcurrencyLimit()`
 - `scope.submit(name, callable)` — submit a value-returning task
 - `scope.submit(name, runnable)` — submit a basic no-result task and receive `Task<Void>`
+- `task.toCompletableFuture()` — observe/compose results only; use `task.cancel()` for cancellation
 - `scope.await(tasks)` / `scope.awaitAll(tasks)` — wait for completion
 - `scope.joiner().firstSuccess(...)` — return first successful result, cancel unfinished siblings
 - `scope.joiner().quorum(n, ...)` — return once `n` tasks succeed

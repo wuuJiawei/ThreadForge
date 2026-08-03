@@ -136,7 +136,7 @@ public final class ScopeJoiner {
             synchronized (monitor) {
                 tasks.add(task);
             }
-            task.toCompletableFuture().whenComplete(new java.util.function.BiConsumer<T, Throwable>() {
+            task.internalFuture().whenComplete(new java.util.function.BiConsumer<T, Throwable>() {
                 @Override
                 public void accept(T value, Throwable throwable) {
                     handleCompletion(task, value, throwable);

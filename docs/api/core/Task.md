@@ -54,7 +54,8 @@
 
 ### `CompletableFuture<T> toCompletableFuture()`
 
-暴露底层 `CompletableFuture`，便于与生态 API 互操作。
+返回只读的结果镜像，便于与生态 API 互操作。任务的成功、失败和取消会传播到镜像；
+对镜像调用 `complete`、`completeExceptionally` 或 `cancel` 不会修改底层任务。
 
 ## 取消
 
@@ -62,7 +63,7 @@
 
 请求取消任务。
 
-- 会将状态设为 `CANCELLED`
+- 仅在赢得终态竞争时将状态设为 `CANCELLED`
 - 若任务正在运行，会中断运行线程
 - 返回值语义与 `CompletableFuture.cancel(true)` 一致
 

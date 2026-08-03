@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
@@ -40,6 +41,7 @@ public final class Task<T> {
     private final long id;
     private final String name;
     private final CompletableFuture<T> future;
+    private final ReadOnlyCompletableFuture<T> observer;
     private final Object lifecycleLock;
     private final CompletableFuture<Void> executionFinished;
     private State state;
@@ -53,9 +55,22 @@ public final class Task<T> {
         this.id = id;
         this.name = name;
         this.future = future;
+        this.observer = new ReadOnlyCompletableFuture<T>();
         this.lifecycleLock = new Object();
         this.executionFinished = new CompletableFuture<Void>();
         this.state = State.PENDING;
+        future.whenComplete(new BiConsumer<T, Throwable>() {
+            @Override
+            public void accept(T value, Throwable failure) {
+                if (failure == null) {
+                    observer.completeFromTask(value);
+                } else if (Task.this.future.isCancelled()) {
+                    observer.cancelFromTask();
+                } else {
+                    observer.failFromTask(failure);
+                }
+            }
+        });
     }
 
     /** 任务 ID（在同一个 scope 内单调递增）。 */
@@ -163,25 +178,30 @@ public final class Task<T> {
     }
 
     /**
-     * 暴露底层 {@link CompletableFuture}，用于与外部 API 互操作。
+     * 返回只读的结果镜像，用于与外部 {@link CompletableFuture} API 互操作。
+     * 外部完成或取消镜像不会修改底层任务。
      */
     public CompletableFuture<T> toCompletableFuture() {
-        return future;
+        return observer;
     }
 
     /** 任务成功后做同步映射。 */
     public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> function) {
-        return future.thenApply(function);
+        return observer.thenApply(function);
     }
 
     /** 任务成功后做异步映射。 */
     public <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends java.util.concurrent.CompletionStage<U>> function) {
-        return future.thenCompose(function);
+        return observer.thenCompose(function);
     }
 
     /** 任务异常完成时提供兜底值映射。 */
     public CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> function) {
-        return future.exceptionally(function);
+        return observer.exceptionally(function);
+    }
+
+    CompletableFuture<T> internalFuture() {
+        return future;
     }
 
     void attachExecution(Future<?> execution) {
@@ -383,5 +403,44 @@ public final class Task<T> {
             throw (Error) cause;
         }
         throw new TaskExecutionException("Task execution failed", cause);
+    }
+
+    private static final class ReadOnlyCompletableFuture<V> extends CompletableFuture<V> {
+        private boolean completeFromTask(V value) {
+            return super.complete(value);
+        }
+
+        private boolean failFromTask(Throwable failure) {
+            return super.completeExceptionally(failure);
+        }
+
+        private boolean cancelFromTask() {
+            return super.cancel(false);
+        }
+
+        @Override
+        public boolean complete(V value) {
+            return false;
+        }
+
+        @Override
+        public boolean completeExceptionally(Throwable failure) {
+            return false;
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        @Override
+        public void obtrudeValue(V value) {
+            throw new UnsupportedOperationException("Task result Future is read-only");
+        }
+
+        @Override
+        public void obtrudeException(Throwable failure) {
+            throw new UnsupportedOperationException("Task result Future is read-only");
+        }
     }
 }

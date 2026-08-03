@@ -275,6 +275,8 @@ CompletableFuture<T> toCompletableFuture()
 CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> fn)
 ```
 
+`toCompletableFuture()` 返回只读结果镜像；组合操作保持兼容，但外部完成或取消镜像不会修改底层 `Task`。
+
 ### FailurePolicy
 
 - `FAIL_FAST`：首个失败直接抛出，并取消其他任务

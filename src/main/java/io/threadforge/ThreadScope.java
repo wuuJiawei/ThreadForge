@@ -686,6 +686,7 @@ public final class ThreadScope implements AutoCloseable {
         }
 
         Throwable primary = null;
+        List<Task<?>> closingTasks = new ArrayList<Task<?>>(tasks);
 
         token.cancel();
 
@@ -697,7 +698,7 @@ public final class ThreadScope implements AutoCloseable {
             }
         }
 
-        for (Task<?> task : tasks) {
+        for (Task<?> task : closingTasks) {
             try {
                 if (!task.isDone()) {
                     task.cancel();
@@ -705,6 +706,16 @@ public final class ThreadScope implements AutoCloseable {
             } catch (Throwable t) {
                 primary = combine(primary, t);
             }
+        }
+
+        for (ScheduledTask scheduledTask : scheduledTasks) {
+            if (scheduledTask instanceof DispatchingScheduledTask) {
+                ((DispatchingScheduledTask) scheduledTask).awaitDispatchedWork();
+            }
+        }
+
+        for (Task<?> task : closingTasks) {
+            task.awaitExecutionFinished();
         }
 
         for (Runnable cleanup : deferred) {
@@ -1137,6 +1148,7 @@ public final class ThreadScope implements AutoCloseable {
         private final Runnable command;
         private final AtomicBoolean cancelled;
         private final Queue<FutureTask<Void>> dispatched;
+        private final Object dispatchMonitor;
         private volatile ScheduledTask timer;
 
         private DispatchingScheduledTask(ExecutorService executor, Runnable command) {
@@ -1144,6 +1156,7 @@ public final class ThreadScope implements AutoCloseable {
             this.command = command;
             this.cancelled = new AtomicBoolean();
             this.dispatched = new ConcurrentLinkedQueue<FutureTask<Void>>();
+            this.dispatchMonitor = new Object();
         }
 
         private void bind(ScheduledTask timer) {
@@ -1155,11 +1168,14 @@ public final class ThreadScope implements AutoCloseable {
 
         @Override
         public void run() {
-            if (cancelled.get()) {
-                return;
+            FutureTask<Void> work;
+            synchronized (dispatchMonitor) {
+                if (cancelled.get()) {
+                    return;
+                }
+                work = new DispatchedWork(command);
+                dispatched.add(work);
             }
-            FutureTask<Void> work = new DispatchedWork(command);
-            dispatched.add(work);
             if (cancelled.get()) {
                 work.cancel(true);
                 return;
@@ -1174,7 +1190,10 @@ public final class ThreadScope implements AutoCloseable {
 
         @Override
         public boolean cancel() {
-            boolean changed = cancelled.compareAndSet(false, true);
+            boolean changed;
+            synchronized (dispatchMonitor) {
+                changed = cancelled.compareAndSet(false, true);
+            }
             ScheduledTask currentTimer = timer;
             if (currentTimer != null) {
                 changed |= currentTimer.cancel();
@@ -1183,6 +1202,22 @@ public final class ThreadScope implements AutoCloseable {
                 changed |= work.cancel(true);
             }
             return changed;
+        }
+
+        private void awaitDispatchedWork() {
+            boolean interrupted = false;
+            synchronized (dispatchMonitor) {
+                while (!dispatched.isEmpty()) {
+                    try {
+                        dispatchMonitor.wait();
+                    } catch (InterruptedException ignored) {
+                        interrupted = true;
+                    }
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         @Override
@@ -1197,13 +1232,35 @@ public final class ThreadScope implements AutoCloseable {
         }
 
         private final class DispatchedWork extends FutureTask<Void> {
+            private final AtomicBoolean started;
+
             private DispatchedWork(Runnable runnable) {
                 super(runnable, null);
+                this.started = new AtomicBoolean();
+            }
+
+            @Override
+            public void run() {
+                started.set(true);
+                try {
+                    super.run();
+                } finally {
+                    removeDispatchedWork(this);
+                }
             }
 
             @Override
             protected void done() {
-                dispatched.remove(this);
+                if (!started.get()) {
+                    removeDispatchedWork(this);
+                }
+            }
+        }
+
+        private void removeDispatchedWork(FutureTask<Void> work) {
+            synchronized (dispatchMonitor) {
+                dispatched.remove(work);
+                dispatchMonitor.notifyAll();
             }
         }
     }

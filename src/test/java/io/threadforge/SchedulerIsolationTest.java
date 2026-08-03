@@ -22,9 +22,10 @@ class SchedulerIsolationTest {
         final CountDownLatch userJobStarted = new CountDownLatch(1);
         final CountDownLatch releaseUserJob = new CountDownLatch(1);
 
-        try (ThreadScope blockingScope = ThreadScope.open();
-             ThreadScope firstTimedScope = ThreadScope.open();
-             ThreadScope secondTimedScope = ThreadScope.open()) {
+        ThreadScope blockingScope = ThreadScope.open();
+        ThreadScope firstTimedScope = ThreadScope.open();
+        ThreadScope secondTimedScope = ThreadScope.open();
+        try {
             blockingScope.schedule(Duration.ZERO, new Runnable() {
                 @Override
                 public void run() {
@@ -46,6 +47,9 @@ class SchedulerIsolationTest {
             });
         } finally {
             releaseUserJob.countDown();
+            secondTimedScope.close();
+            firstTimedScope.close();
+            blockingScope.close();
         }
     }
 

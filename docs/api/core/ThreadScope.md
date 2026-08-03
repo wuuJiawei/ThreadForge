@@ -307,13 +307,15 @@ try (ThreadScope scope = ThreadScope.open()
 1. 触发 token 取消
 2. 取消全部计划任务
 3. 取消全部未完成任务
-4. 依次执行 `defer` 清理（LIFO）
-5. 取消截止时间监控任务
-6. 关闭由 scope 持有的执行器
+4. 等待已启动的任务和计划工作真正退出
+5. 依次执行 `defer` 清理（LIFO）
+6. 取消截止时间监控任务
+7. 关闭由 scope 持有的执行器
 
 异常语义：
 
 - `close()` 本身是幂等的
+- 用户代码若忽略中断，`close()` 会继续等待，直到该代码自行退出；框架不会把逻辑取消伪装成物理结束
 - 清理过程中的异常会聚合（通过 `addSuppressed`）后抛出
 - 如果主流程已有异常（比如 try-with-resources 体内抛错），清理异常会以 suppressed 形式附加
 

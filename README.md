@@ -257,6 +257,8 @@ Scheduler.priority(int size)
 scope.defer(() -> resource.close());
 ```
 
+`close()` 会等待已启动工作真正退出后再执行 deferred cleanup。忽略中断的用户代码会让关闭继续等待，直到代码自行结束。
+
 ### Task
 
 ```java

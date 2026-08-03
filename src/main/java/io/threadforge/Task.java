@@ -132,8 +132,7 @@ public final class Task<T> {
         }
         if (executionToCancel != null) {
             executionToCancel.cancel(true);
-        }
-        if (runner != null) {
+        } else if (runner != null) {
             runner.interrupt();
         }
         runCallback(callback);
@@ -286,8 +285,7 @@ public final class Task<T> {
         if (interrupt) {
             if (executionToCancel != null) {
                 executionToCancel.cancel(true);
-            }
-            if (runner != null) {
+            } else if (runner != null) {
                 runner.interrupt();
             }
         }
@@ -363,6 +361,26 @@ public final class Task<T> {
             throw new IllegalStateException(impossible);
         } catch (TimeoutException timeoutException) {
             throw new ScopeTimeoutException("Task execution did not finish in time");
+        }
+    }
+
+    void awaitExecutionFinished() {
+        boolean interrupted = false;
+        try {
+            while (true) {
+                try {
+                    executionFinished.get();
+                    return;
+                } catch (InterruptedException ignored) {
+                    interrupted = true;
+                } catch (ExecutionException impossible) {
+                    throw new IllegalStateException(impossible);
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

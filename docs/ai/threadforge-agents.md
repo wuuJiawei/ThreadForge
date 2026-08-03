@@ -61,6 +61,7 @@ try (ThreadScope scope = ThreadScope.open()) {
 - Owned schedulers (`fixed`/`priority`) belong to one scope and close with it; use `Scheduler.from(...)` for a caller-managed executor shared across scopes
 - Submissions to a shut-down scheduler are rejected instead of remaining pending
 - `DelayScheduler.singleThread()` is `AutoCloseable` and owned; closing `shared()` or `from(executor)` does not close shared/external executors
+- One-shot/initial delays may be zero but not negative; fixed-rate periods and fixed delays must be positive and retain nanosecond precision
 
 ## Exceptions
 

@@ -79,6 +79,7 @@ public final class DelayScheduler implements AutoCloseable {
     public <T> ScheduledTask schedule(Duration delay, final Callable<T> callable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(callable, "callable");
+        long delayNanos = toNanos(delay, "delay", true);
         ScheduledFuture<?> future = executor.schedule(new Runnable() {
             @Override
             public void run() {
@@ -88,7 +89,7 @@ public final class DelayScheduler implements AutoCloseable {
                     throw new RuntimeException(e);
                 }
             }
-        }, delay.toMillis(), TimeUnit.MILLISECONDS);
+        }, delayNanos, TimeUnit.NANOSECONDS);
         return new DefaultScheduledTask(future);
     }
 
@@ -98,7 +99,8 @@ public final class DelayScheduler implements AutoCloseable {
     public ScheduledTask schedule(Duration delay, final Runnable runnable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
-        ScheduledFuture<?> future = executor.schedule(runnable, delay.toMillis(), TimeUnit.MILLISECONDS);
+        long delayNanos = toNanos(delay, "delay", true);
+        ScheduledFuture<?> future = executor.schedule(runnable, delayNanos, TimeUnit.NANOSECONDS);
         return new DefaultScheduledTask(future);
     }
 
@@ -118,11 +120,13 @@ public final class DelayScheduler implements AutoCloseable {
         Objects.requireNonNull(initial, "initial");
         Objects.requireNonNull(period, "period");
         Objects.requireNonNull(runnable, "runnable");
+        long initialNanos = toNanos(initial, "initial delay", true);
+        long periodNanos = toNanos(period, "period", false);
         ScheduledFuture<?> future = executor.scheduleAtFixedRate(
             runnable,
-            initial.toMillis(),
-            period.toMillis(),
-            TimeUnit.MILLISECONDS
+            initialNanos,
+            periodNanos,
+            TimeUnit.NANOSECONDS
         );
         return new DefaultScheduledTask(future);
     }
@@ -136,11 +140,13 @@ public final class DelayScheduler implements AutoCloseable {
         Objects.requireNonNull(initial, "initial");
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
+        long initialNanos = toNanos(initial, "initial delay", true);
+        long delayNanos = toNanos(delay, "delay", false);
         ScheduledFuture<?> future = executor.scheduleWithFixedDelay(
             runnable,
-            initial.toMillis(),
-            delay.toMillis(),
-            TimeUnit.MILLISECONDS
+            initialNanos,
+            delayNanos,
+            TimeUnit.NANOSECONDS
         );
         return new DefaultScheduledTask(future);
     }
@@ -163,6 +169,17 @@ public final class DelayScheduler implements AutoCloseable {
      */
     void shutdownIfOwned() {
         close();
+    }
+
+    private static long toNanos(Duration duration, String name, boolean allowZero) {
+        if (duration.isNegative() || (!allowZero && duration.isZero())) {
+            throw new IllegalArgumentException(name + (allowZero ? " must be >= 0" : " must be > 0"));
+        }
+        try {
+            return duration.toNanos();
+        } catch (ArithmeticException overflow) {
+            return Long.MAX_VALUE;
+        }
     }
 
     /**

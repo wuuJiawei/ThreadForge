@@ -63,6 +63,9 @@ try (DelayScheduler scheduler = DelayScheduler.singleThread()) {
 通用约束：
 
 - 参数不可为 `null`
+- 一次性 `delay` 和周期任务 `initial` 必须大于等于 0
+- fixed-rate `period` 和 fixed-delay `delay` 必须大于 0
+- 使用纳秒精度；超出 `long` 纳秒范围的正 Duration 按 `Long.MAX_VALUE` 纳秒处理
 - 返回值均为 `ScheduledTask`，可取消
 
 ## 与 ThreadScope 的关系

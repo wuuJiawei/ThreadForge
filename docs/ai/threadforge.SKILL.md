@@ -259,6 +259,7 @@ t.cancel();
 ```
 
 For direct scheduling, `DelayScheduler.singleThread()` is owned and must be closed (prefer try-with-resources). Closing `DelayScheduler.shared()` or `DelayScheduler.from(executor)` does not close the shared or external executor.
+One-shot delays and periodic initial delays may be zero but not negative; fixed-rate periods and fixed delays must be positive. Scheduling preserves nanosecond precision.
 
 ### Task Composition
 

@@ -210,7 +210,7 @@ class TaskLifecycleTest {
         }
     }
 
-    @Test
+    @RepeatedTest(50)
     void scopeTracksTimedOutTaskUntilIgnoringRunnerActuallyExits() throws Exception {
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch timeoutInterruptObserved = new CountDownLatch(1);

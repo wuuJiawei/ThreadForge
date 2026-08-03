@@ -24,6 +24,12 @@ import java.util.function.Function;
  */
 public final class Task<T> {
 
+    private static final Runnable NOOP_CALLBACK = new Runnable() {
+        @Override
+        public void run() {
+        }
+    };
+
     /** 任务生命周期状态。 */
     public enum State {
         /** 已创建但尚未运行。 */
@@ -47,6 +53,7 @@ public final class Task<T> {
     private State state;
     private Thread runnerThread;
     private boolean executionEntered;
+    private boolean executionFinishing;
     private Future<?> execution;
     private Runnable executionFinishedCallback;
     private Throwable terminalFailure;
@@ -130,7 +137,7 @@ public final class Task<T> {
             runner = runnerThread;
             executionToCancel = execution;
             if (!executionEntered) {
-                callback = markExecutionFinishedLocked();
+                callback = beginExecutionFinishedLocked();
             }
         }
         if (executionToCancel != null) {
@@ -138,7 +145,7 @@ public final class Task<T> {
         } else if (runner != null) {
             runner.interrupt();
         }
-        runCallback(callback);
+        finishExecution(callback);
         return true;
     }
 
@@ -245,9 +252,9 @@ public final class Task<T> {
             if (runnerThread == runner) {
                 runnerThread = null;
             }
-            callback = markExecutionFinishedLocked();
+            callback = beginExecutionFinishedLocked();
         }
-        runCallback(callback);
+        finishExecution(callback);
     }
 
     boolean completeSuccess(T value) {
@@ -284,7 +291,7 @@ public final class Task<T> {
             runner = runnerThread;
             executionToCancel = execution;
             if (!executionEntered) {
-                callback = markExecutionFinishedLocked();
+                callback = beginExecutionFinishedLocked();
             }
         }
         if (interrupt) {
@@ -294,7 +301,7 @@ public final class Task<T> {
                 runner.interrupt();
             }
         }
-        runCallback(callback);
+        finishExecution(callback);
         return true;
     }
 
@@ -403,23 +410,27 @@ public final class Task<T> {
         }
     }
 
-    private Runnable markExecutionFinishedLocked() {
-        if (executionFinished.isDone()) {
+    private Runnable beginExecutionFinishedLocked() {
+        if (executionFinishing || executionFinished.isDone()) {
             return null;
         }
-        executionFinished.complete(null);
+        executionFinishing = true;
         Runnable callback = executionFinishedCallback;
         executionFinishedCallback = null;
-        return callback;
+        return callback == null ? NOOP_CALLBACK : callback;
     }
 
     private static boolean isTerminal(State state) {
         return state == State.SUCCESS || state == State.FAILED || state == State.CANCELLED;
     }
 
-    private static void runCallback(Runnable callback) {
+    private void finishExecution(Runnable callback) {
         if (callback != null) {
-            callback.run();
+            try {
+                callback.run();
+            } finally {
+                executionFinished.complete(null);
+            }
         }
     }
 

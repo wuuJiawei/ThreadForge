@@ -204,6 +204,8 @@ Scheduler.virtualThreads()      // Explicit virtual threads, scope does NOT own
 Scheduler.from(executorService) // Wrap external executor, scope does NOT own
 ```
 
+An owned scheduler (`fixed`/`priority`) belongs to one scope and is closed with it. Use `from(...)` with a caller-managed executor when multiple scopes must share an executor. Submissions after shutdown are rejected.
+
 ### Context Propagation
 
 ThreadForge automatically captures `Context` at submit time and restores it in the task thread. After task completes, original thread context is restored.

@@ -55,6 +55,8 @@ Scheduler.virtualThreads()      // Explicit virtual threads
 Scheduler.from(executorService) // Wrap external executor
 ```
 
+An owned scheduler (`fixed`/`priority`) belongs to one scope and is closed with it. Use `from(...)` with a caller-managed executor when multiple scopes must share an executor. Submissions after shutdown are rejected.
+
 ## RetryPolicy
 
 ```java

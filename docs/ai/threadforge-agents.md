@@ -58,6 +58,8 @@ try (ThreadScope scope = ThreadScope.open()) {
 - `Scheduler.detect()` — auto-selects virtual threads (JDK 21+) or common pool
 - `Scheduler.fixed(n)` — fixed thread pool
 - `Scheduler.priority(n)` — priority-based pool (use with `TaskPriority`)
+- Owned schedulers (`fixed`/`priority`) belong to one scope and close with it; use `Scheduler.from(...)` for a caller-managed executor shared across scopes
+- Submissions to a shut-down scheduler are rejected instead of remaining pending
 
 ## Exceptions
 

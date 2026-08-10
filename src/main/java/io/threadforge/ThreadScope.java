@@ -1217,12 +1217,14 @@ public final class ThreadScope implements AutoCloseable {
             Thread runner = Thread.currentThread();
             if (!task.beginExecution(runner)) {
                 task.markExecutionFinished(runner);
+                Thread.interrupted();
                 return;
             }
             try {
                 super.run();
             } finally {
                 task.markExecutionFinished(runner);
+                Thread.interrupted();
             }
         }
     }

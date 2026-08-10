@@ -245,6 +245,8 @@ ScheduledTask scheduleAtFixedRate(Duration initial, Duration period, Runnable ru
 ScheduledTask scheduleWithFixedDelay(Duration initial, Duration delay, Runnable runnable)
 ```
 
+`DelayScheduler.singleThread()` 拥有底层线程并实现 `AutoCloseable`，应使用 try-with-resources；`shared()` 和 `from(executor)` 的 `close()` 不会关闭共享或外部执行器。
+
 优先级调度器：
 
 ```java
@@ -256,6 +258,8 @@ Scheduler.priority(int size)
 ```java
 scope.defer(() -> resource.close());
 ```
+
+`close()` 会等待已启动工作真正退出后再执行 deferred cleanup。忽略中断的用户代码会让关闭继续等待，直到代码自行结束。
 
 ### Task
 
@@ -274,6 +278,8 @@ CompletableFuture<T> toCompletableFuture()
 <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn)
 CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> fn)
 ```
+
+`toCompletableFuture()` 返回只读结果镜像；组合操作保持兼容，但外部完成或取消镜像不会修改底层 `Task`。
 
 ### FailurePolicy
 

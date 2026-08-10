@@ -24,7 +24,8 @@
 - 线程池特性：
   - 核心线程数 = 最大线程数 = `size`
   - 队列容量 = `max(256, size * 100)`
-  - 拒绝策略 = `CallerRunsPolicy`
+  - 队列满且执行器仍运行时，由提交线程执行
+  - 执行器已关闭时，明确抛出 `RejectedExecutionException`
   - 允许核心线程超时回收
 
 ### `static Scheduler priority(int size)`
@@ -35,7 +36,7 @@
 - 线程池特性：
   - 核心线程数 = 最大线程数 = `size`
   - 队列类型 = `PriorityBlockingQueue`
-  - 拒绝策略 = `CallerRunsPolicy`
+  - 执行器已关闭时，明确抛出 `RejectedExecutionException`
 - 说明：
   - 需配合 `TaskPriority` 使用
   - 同优先级按提交顺序执行
@@ -74,6 +75,10 @@
 ### `boolean isVirtualThreadMode()`
 
 是否虚拟线程模式。
+
+## 生命周期
+
+`fixed(...)` 和 `priority(...)` 返回 owned scheduler，应只绑定一个 `ThreadScope`；scope 关闭时会关闭其执行器，之后再次提交会被明确拒绝。需要跨 scope 复用时，请用 `from(executor)` 包装由调用方管理的外部执行器。
 
 ## 推荐用法
 

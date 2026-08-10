@@ -39,7 +39,7 @@ try (ThreadScope scope = ThreadScope.open()
 
 | Policy | Behavior |
 |---|---|
-| `FAIL_FAST` | First failure throws, cancel remaining |
+| `FAIL_FAST` | First completed failure throws, cancel remaining |
 | `COLLECT_ALL` | Wait all, throw `AggregateException` if any failed |
 | `SUPERVISOR` | Never auto-cancel; failures in `Outcome` |
 | `CANCEL_OTHERS` | Cancel siblings on failure, don't throw |
@@ -55,6 +55,11 @@ Scheduler.virtualThreads()      // Explicit virtual threads
 Scheduler.from(executorService) // Wrap external executor
 ```
 
+An owned scheduler (`fixed`/`priority`) belongs to one scope and is closed with it. Use `from(...)` with a caller-managed executor when multiple scopes must share an executor. Submissions after shutdown are rejected.
+
+`DelayScheduler.singleThread()` is `AutoCloseable` and owns its executor. Closing `DelayScheduler.shared()` or `DelayScheduler.from(executor)` does not close the shared or external executor.
+One-shot delays and periodic initial delays may be zero but not negative; fixed-rate periods and fixed delays must be positive. Scheduling preserves nanosecond precision.
+
 ## RetryPolicy
 
 ```java
@@ -64,6 +69,7 @@ RetryPolicy.exponentialBackoff(3, initial, 2.0, maxDelay)  // Exponential backof
 ```
 
 Note: `maxAttempts` includes the first attempt (3 = 1 initial + 2 retries).
+Exponential-backoff multipliers must be finite and at least `1.0`; computed delays are clamped to `maxDelay` without numeric overflow.
 
 ## ScopeJoiner
 
@@ -91,6 +97,7 @@ ThreadHook combined = SlowTaskHook.create(Duration.ofMillis(200), event -> {
 - `ThreadHook.andThen(...)` composes multiple hooks
 - `SlowTaskHook` emits events only when duration crosses the configured threshold
 - optional Micrometer and SLF4J / MDC integrations live under `integrations/`
+- ThreadLocal hook setup and cleanup run on the same task runner; hook state is scoped by scope ID plus task ID
 
 ## Context Propagation
 
@@ -126,6 +133,11 @@ String id = Context.get("traceId"); // "req-1001"
 - `ExecutorService.submit()` → `scope.submit()`
 - `CompletableFuture.get()` → `task.await()`
 - `CompletableFuture.allOf()` → `scope.awaitAll(tasks)`
+- `task.toCompletableFuture()` is observation-only; use `task.cancel()` to cancel the task
+- Blocking `Channel.send/receive` calls are interruptible and throw `CancelledException`
+- Interrupting an `await` caller does not mark target tasks cancelled
+- `scope.close()` waits for started work to exit before running deferred cleanup
+- `submit`, `schedule*`, and `defer` racing with close either register fully or fail clearly
 - `shutdownNow()` → `scope.close()` (try-with-resources)
 - Manual retry loops → `RetryPolicy`
 - Manual timeout → `withDeadline()` or per-task `Duration`

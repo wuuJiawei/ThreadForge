@@ -17,12 +17,12 @@ public final class MdcThreadHook implements ThreadHook {
 
     private final String[] keys;
     private final boolean captureAll;
-    private final ConcurrentMap<Long, Map<String, String>> previousStates;
+    private final ConcurrentMap<String, Map<String, String>> previousStates;
 
     private MdcThreadHook(String[] keys, boolean captureAll) {
         this.keys = keys;
         this.captureAll = captureAll;
-        this.previousStates = new ConcurrentHashMap<Long, Map<String, String>>();
+        this.previousStates = new ConcurrentHashMap<String, Map<String, String>>();
     }
 
     public static MdcThreadHook captureAll() {
@@ -41,7 +41,7 @@ public final class MdcThreadHook implements ThreadHook {
     @Override
     public void onStart(TaskInfo info) {
         Map<String, String> previous = MDC.getCopyOfContextMap();
-        previousStates.put(info.taskId(), previous == null ? Collections.<String, String>emptyMap() : previous);
+        previousStates.put(key(info), previous == null ? Collections.<String, String>emptyMap() : previous);
 
         Map<String, String> next = captureAll ? captureAllStringValues() : captureSelectedKeys();
         if (next.isEmpty()) {
@@ -53,17 +53,17 @@ public final class MdcThreadHook implements ThreadHook {
 
     @Override
     public void onSuccess(TaskInfo info, Duration duration) {
-        restore(info.taskId());
+        restore(info);
     }
 
     @Override
     public void onFailure(TaskInfo info, Throwable error, Duration duration) {
-        restore(info.taskId());
+        restore(info);
     }
 
     @Override
     public void onCancel(TaskInfo info, Duration duration) {
-        restore(info.taskId());
+        restore(info);
     }
 
     private Map<String, String> captureAllStringValues() {
@@ -88,12 +88,19 @@ public final class MdcThreadHook implements ThreadHook {
         return values;
     }
 
-    private void restore(long taskId) {
-        Map<String, String> previous = previousStates.remove(taskId);
-        if (previous == null || previous.isEmpty()) {
+    private void restore(TaskInfo info) {
+        Map<String, String> previous = previousStates.remove(key(info));
+        if (previous == null) {
+            return;
+        }
+        if (previous.isEmpty()) {
             MDC.clear();
             return;
         }
         MDC.setContextMap(previous);
+    }
+
+    private String key(TaskInfo info) {
+        return info.scopeId() + ":" + info.taskId();
     }
 }

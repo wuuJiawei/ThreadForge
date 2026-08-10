@@ -50,4 +50,6 @@ try (ThreadScope scope = ThreadScope.open()
 
 - ThreadForge 在 `submit/schedule` 时会捕获当前 OpenTelemetry 上下文
 - 任务执行前恢复父上下文，再创建任务 span
+- Span Scope 在创建它的 runner 线程中关闭并恢复 ThreadLocal，上下文恢复后再结束 Span
+- timeout 等终态信号不会把 Scope 的关闭转移到控制调度线程
 - 该机制同时适用于平台线程和虚拟线程

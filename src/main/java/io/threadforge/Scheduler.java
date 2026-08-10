@@ -8,6 +8,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +26,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class Scheduler {
 
     private static final Scheduler COMMON_POOL = new Scheduler(ForkJoinPool.commonPool(), false, "commonPool", false);
+    private static final RejectedExecutionHandler CALLER_RUNS_WHILE_ACTIVE = new RejectedExecutionHandler() {
+        @Override
+        public void rejectedExecution(Runnable runnable, ThreadPoolExecutor executor) {
+            if (executor.isShutdown()) {
+                throw new RejectedExecutionException("Scheduler executor is shut down");
+            }
+            runnable.run();
+        }
+    };
     private static volatile Scheduler SHARED_VIRTUAL_THREADS;
 
     private final ExecutorService executor;
@@ -53,7 +64,7 @@ public final class Scheduler {
     /**
      * 创建固定大小线程池调度器。
      *
-     * <p>返回的调度器拥有执行器所有权，scope 关闭时会一并关闭。
+     * <p>返回的调度器拥有执行器所有权，scope 关闭时会一并关闭，因此应只绑定一个 scope。
      *
      * <p>示例：
      * <pre>{@code
@@ -73,7 +84,7 @@ public final class Scheduler {
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<Runnable>(queueCapacity),
             new NamedThreadFactory("threadforge-fixed"),
-            new ThreadPoolExecutor.CallerRunsPolicy()
+            CALLER_RUNS_WHILE_ACTIVE
         );
         executor.allowCoreThreadTimeOut(true);
         return new Scheduler(executor, true, "fixed(" + size + ")", false);
@@ -95,7 +106,7 @@ public final class Scheduler {
             TimeUnit.SECONDS,
             new PriorityBlockingQueue<Runnable>(),
             new NamedThreadFactory("threadforge-priority"),
-            new ThreadPoolExecutor.CallerRunsPolicy()
+            CALLER_RUNS_WHILE_ACTIVE
         );
         executor.allowCoreThreadTimeOut(true);
         return new Scheduler(executor, true, "priority(" + size + ")", false);

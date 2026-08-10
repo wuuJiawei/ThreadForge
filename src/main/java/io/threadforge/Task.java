@@ -4,9 +4,10 @@ import java.time.Duration;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
@@ -23,9 +24,13 @@ import java.util.function.Function;
  */
 public final class Task<T> {
 
-    /**
-     * 任务生命周期状态。
-     */
+    private static final Runnable NOOP_CALLBACK = new Runnable() {
+        @Override
+        public void run() {
+        }
+    };
+
+    /** 任务生命周期状态。 */
     public enum State {
         /** 已创建但尚未运行。 */
         PENDING,
@@ -42,122 +47,138 @@ public final class Task<T> {
     private final long id;
     private final String name;
     private final CompletableFuture<T> future;
-    private final AtomicReference<State> state;
-    private final AtomicReference<Thread> runnerThread;
+    private final ReadOnlyCompletableFuture<T> observer;
+    private final Object lifecycleLock;
+    private final CompletableFuture<Void> executionFinished;
+    private State state;
+    private Thread runnerThread;
+    private boolean executionEntered;
+    private boolean executionFinishing;
+    private Future<?> execution;
+    private Runnable executionFinishedCallback;
+    private Throwable terminalFailure;
 
-    /**
-     * 包级构造函数，仅供 {@link ThreadScope} 创建任务句柄。
-     */
+    /** 包级构造函数，仅供 {@link ThreadScope} 创建任务句柄。 */
     Task(long id, String name, CompletableFuture<T> future) {
         this.id = id;
         this.name = name;
         this.future = future;
-        this.state = new AtomicReference<State>(State.PENDING);
-        this.runnerThread = new AtomicReference<Thread>();
+        this.observer = new ReadOnlyCompletableFuture<T>();
+        this.lifecycleLock = new Object();
+        this.executionFinished = new CompletableFuture<Void>();
+        this.state = State.PENDING;
+        future.whenComplete(new BiConsumer<T, Throwable>() {
+            @Override
+            public void accept(T value, Throwable failure) {
+                if (failure == null) {
+                    observer.completeFromTask(value);
+                } else if (Task.this.future.isCancelled()) {
+                    observer.cancelFromTask();
+                } else {
+                    observer.failFromTask(failure);
+                }
+            }
+        });
     }
 
-    /**
-     * 任务 ID（在同一个 scope 内单调递增）。
-     */
+    /** 任务 ID（在同一个 scope 内单调递增）。 */
     public long id() {
         return id;
     }
 
-    /**
-     * 任务名称。
-     */
+    /** 任务名称。 */
     public String name() {
         return name;
     }
 
-    /**
-     * 获取当前任务状态快照。
-     */
+    /** 获取当前任务状态快照。 */
     public State state() {
-        return state.get();
+        synchronized (lifecycleLock) {
+            return state;
+        }
     }
 
-    /**
-     * 任务是否已经结束（成功/失败/取消任一状态）。
-     */
+    /** 任务是否已经逻辑结束。 */
     public boolean isDone() {
         return future.isDone();
     }
 
-    /**
-     * 任务是否处于取消状态。
-     */
+    /** 任务是否处于取消状态。 */
     public boolean isCancelled() {
-        return state.get() == State.CANCELLED || future.isCancelled();
+        synchronized (lifecycleLock) {
+            return state == State.CANCELLED || future.isCancelled();
+        }
     }
 
-    /**
-     * 任务是否处于失败状态。
-     */
+    /** 任务是否处于失败状态。 */
     public boolean isFailed() {
-        return state.get() == State.FAILED;
+        return state() == State.FAILED;
     }
 
     /**
-     * 取消任务，并尝试中断执行线程。
-     *
-     * <p>返回值与 {@link CompletableFuture#cancel(boolean)} 语义一致。
+     * 取消任务。只有成功赢得终态竞争时才会修改状态或中断执行线程。
      */
     public boolean cancel() {
-        state.set(State.CANCELLED);
-        Thread runner = runnerThread.get();
-        if (runner != null) {
+        Thread runner;
+        Future<?> executionToCancel;
+        Runnable callback = null;
+        synchronized (lifecycleLock) {
+            if (isTerminal(state) || future.isDone()) {
+                return false;
+            }
+            State previous = state;
+            state = State.CANCELLED;
+            terminalFailure = new CancelledException("Task cancelled");
+            if (!future.cancel(true)) {
+                state = previous;
+                terminalFailure = null;
+                return false;
+            }
+            runner = runnerThread;
+            executionToCancel = execution;
+            if (!executionEntered) {
+                callback = beginExecutionFinishedLocked();
+            }
+        }
+        if (executionToCancel != null) {
+            executionToCancel.cancel(true);
+        } else if (runner != null) {
             runner.interrupt();
         }
-        return future.cancel(true);
+        finishExecution(callback);
+        return true;
     }
 
     /**
      * 等待任务完成并返回结果。
      *
-     * <p>异常语义：
-     * 若被取消抛 {@link CancelledException}；
-     * 若任务抛运行时异常/错误则原样传播；
-     * 若任务抛 checked exception 则包装为 {@link TaskExecutionException}。
+     * <p>若被取消抛 {@link CancelledException}；运行时异常/错误原样传播；
+     * checked exception 包装为 {@link TaskExecutionException}。
      */
     public T await() {
         try {
-            T value = future.get();
-            state.compareAndSet(State.RUNNING, State.SUCCESS);
-            state.compareAndSet(State.PENDING, State.SUCCESS);
-            return value;
+            return future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new CancelledException("Task interrupted", e);
         } catch (CancellationException e) {
-            state.set(State.CANCELLED);
             throw new CancelledException("Task cancelled", e);
         } catch (ExecutionException e) {
-            state.set(State.FAILED);
             rethrow(e.getCause());
             return null;
         }
     }
 
-    /**
-     * 在指定超时时间内等待任务完成（包级方法，供 scope 内部使用）。
-     *
-     * <p>超时会抛出 {@link ScopeTimeoutException}。
-     */
+    /** 在指定超时时间内等待任务完成（包级方法，供 scope 内部使用）。 */
     T await(Duration timeout) {
         try {
-            T value = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            state.compareAndSet(State.RUNNING, State.SUCCESS);
-            state.compareAndSet(State.PENDING, State.SUCCESS);
-            return value;
+            return future.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new CancelledException("Task interrupted", e);
         } catch (CancellationException e) {
-            state.set(State.CANCELLED);
             throw new CancelledException("Task cancelled", e);
         } catch (ExecutionException e) {
-            state.set(State.FAILED);
             rethrow(e.getCause());
             return null;
         } catch (TimeoutException e) {
@@ -166,86 +187,253 @@ public final class Task<T> {
     }
 
     /**
-     * 暴露底层 {@link CompletableFuture}，用于与外部 API 互操作。
+     * 返回只读的结果镜像，用于与外部 {@link CompletableFuture} API 互操作。
+     * 外部完成或取消镜像不会修改底层任务。
      */
     public CompletableFuture<T> toCompletableFuture() {
+        return observer;
+    }
+
+    /** 任务成功后做同步映射。 */
+    public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> function) {
+        return observer.thenApply(function);
+    }
+
+    /** 任务成功后做异步映射。 */
+    public <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends java.util.concurrent.CompletionStage<U>> function) {
+        return observer.thenCompose(function);
+    }
+
+    /** 任务异常完成时提供兜底值映射。 */
+    public CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> function) {
+        return observer.exceptionally(function);
+    }
+
+    CompletableFuture<T> internalFuture() {
         return future;
     }
 
-    /**
-     * 任务成功后做同步映射。
-     *
-     * <p>示例：
-     * <pre>{@code
-     * Integer result = task.thenApply(v -> v + 1).join();
-     * }</pre>
-     */
-    public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> function) {
-        return future.thenApply(function);
-    }
-
-    /**
-     * 任务成功后做异步映射。
-     */
-    public <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends java.util.concurrent.CompletionStage<U>> function) {
-        return future.thenCompose(function);
-    }
-
-    /**
-     * 任务异常完成时提供兜底值映射。
-     */
-    public CompletableFuture<T> exceptionally(Function<Throwable, ? extends T> function) {
-        return future.exceptionally(function);
-    }
-
-    /**
-     * 标记任务进入运行状态，并记录执行线程。
-     */
-    boolean markRunning(Thread runner) {
-        boolean marked = state.compareAndSet(State.PENDING, State.RUNNING);
-        if (marked) {
-            runnerThread.set(runner);
+    void attachExecution(Future<?> execution) {
+        synchronized (lifecycleLock) {
+            this.execution = execution;
         }
-        return marked;
     }
 
-    /**
-     * 标记任务成功完成。
-     */
+    void whenExecutionFinished(Runnable callback) {
+        boolean runNow;
+        synchronized (lifecycleLock) {
+            if (executionFinished.isDone()) {
+                runNow = true;
+            } else {
+                executionFinishedCallback = callback;
+                runNow = false;
+            }
+        }
+        if (runNow) {
+            callback.run();
+        }
+    }
+
+    boolean beginExecution(Thread runner) {
+        synchronized (lifecycleLock) {
+            executionEntered = true;
+            if (state != State.PENDING) {
+                return false;
+            }
+            state = State.RUNNING;
+            runnerThread = runner;
+            return true;
+        }
+    }
+
+    void markExecutionFinished(Thread runner) {
+        Runnable callback;
+        synchronized (lifecycleLock) {
+            if (runnerThread == runner) {
+                runnerThread = null;
+            }
+            callback = beginExecutionFinishedLocked();
+        }
+        finishExecution(callback);
+    }
+
+    boolean completeSuccess(T value) {
+        synchronized (lifecycleLock) {
+            if (isTerminal(state)) {
+                return false;
+            }
+            State previous = state;
+            state = State.SUCCESS;
+            if (!future.complete(value)) {
+                state = previous;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    boolean completeFailure(Throwable failure, boolean interrupt) {
+        Thread runner;
+        Future<?> executionToCancel;
+        Runnable callback = null;
+        synchronized (lifecycleLock) {
+            if (isTerminal(state)) {
+                return false;
+            }
+            State previous = state;
+            state = State.FAILED;
+            terminalFailure = failure;
+            if (!future.completeExceptionally(failure)) {
+                state = previous;
+                terminalFailure = null;
+                return false;
+            }
+            runner = runnerThread;
+            executionToCancel = execution;
+            if (!executionEntered) {
+                callback = beginExecutionFinishedLocked();
+            }
+        }
+        if (interrupt) {
+            if (executionToCancel != null) {
+                executionToCancel.cancel(true);
+            } else if (runner != null) {
+                runner.interrupt();
+            }
+        }
+        finishExecution(callback);
+        return true;
+    }
+
+    boolean completeCancelled(CancelledException cancellation) {
+        synchronized (lifecycleLock) {
+            if (isTerminal(state)) {
+                return false;
+            }
+            State previous = state;
+            state = State.CANCELLED;
+            terminalFailure = cancellation;
+            if (!future.completeExceptionally(cancellation)) {
+                state = previous;
+                terminalFailure = null;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    /** Compatibility hooks used by package-level coverage tests. */
+    void markRunning(Thread runner) {
+        beginExecution(runner);
+    }
+
     void markSuccess() {
-        runnerThread.set(null);
-        state.set(State.SUCCESS);
+        synchronized (lifecycleLock) {
+            if (!isTerminal(state)) {
+                state = State.SUCCESS;
+            }
+        }
     }
 
-    /**
-     * 标记任务失败完成。
-     */
     void markFailed() {
-        runnerThread.set(null);
-        state.set(State.FAILED);
+        synchronized (lifecycleLock) {
+            if (!isTerminal(state)) {
+                state = State.FAILED;
+            }
+        }
     }
 
-    /**
-     * 标记任务取消完成。
-     */
     void markCancelled() {
-        runnerThread.set(null);
-        state.set(State.CANCELLED);
+        synchronized (lifecycleLock) {
+            if (!isTerminal(state)) {
+                state = State.CANCELLED;
+            }
+        }
     }
 
-    /**
-     * 中断当前运行线程（若存在）。
-     */
     void interruptRunner() {
-        Thread runner = runnerThread.get();
+        Thread runner;
+        synchronized (lifecycleLock) {
+            runner = runnerThread;
+        }
         if (runner != null) {
             runner.interrupt();
         }
     }
 
-    /**
-     * 统一异常转换并重新抛出。
-     */
+    boolean isExecutionFinished() {
+        return executionFinished.isDone();
+    }
+
+    void awaitExecutionFinished(Duration timeout) {
+        try {
+            executionFinished.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new CancelledException("Interrupted while waiting for task execution to finish", interrupted);
+        } catch (ExecutionException impossible) {
+            throw new IllegalStateException(impossible);
+        } catch (TimeoutException timeoutException) {
+            throw new ScopeTimeoutException("Task execution did not finish in time");
+        }
+    }
+
+    void awaitExecutionFinished() {
+        boolean interrupted = false;
+        try {
+            while (true) {
+                try {
+                    executionFinished.get();
+                    return;
+                } catch (InterruptedException ignored) {
+                    interrupted = true;
+                } catch (ExecutionException impossible) {
+                    throw new IllegalStateException(impossible);
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    boolean hasRunnerThread() {
+        synchronized (lifecycleLock) {
+            return runnerThread != null;
+        }
+    }
+
+    Throwable terminalFailure() {
+        synchronized (lifecycleLock) {
+            return terminalFailure;
+        }
+    }
+
+    private Runnable beginExecutionFinishedLocked() {
+        if (executionFinishing || executionFinished.isDone()) {
+            return null;
+        }
+        executionFinishing = true;
+        Runnable callback = executionFinishedCallback;
+        executionFinishedCallback = null;
+        return callback == null ? NOOP_CALLBACK : callback;
+    }
+
+    private static boolean isTerminal(State state) {
+        return state == State.SUCCESS || state == State.FAILED || state == State.CANCELLED;
+    }
+
+    private void finishExecution(Runnable callback) {
+        if (callback != null) {
+            try {
+                callback.run();
+            } finally {
+                executionFinished.complete(null);
+            }
+        }
+    }
+
     private void rethrow(Throwable cause) {
         if (cause instanceof CancelledException) {
             throw (CancelledException) cause;
@@ -257,5 +445,44 @@ public final class Task<T> {
             throw (Error) cause;
         }
         throw new TaskExecutionException("Task execution failed", cause);
+    }
+
+    private static final class ReadOnlyCompletableFuture<V> extends CompletableFuture<V> {
+        private boolean completeFromTask(V value) {
+            return super.complete(value);
+        }
+
+        private boolean failFromTask(Throwable failure) {
+            return super.completeExceptionally(failure);
+        }
+
+        private boolean cancelFromTask() {
+            return super.cancel(false);
+        }
+
+        @Override
+        public boolean complete(V value) {
+            return false;
+        }
+
+        @Override
+        public boolean completeExceptionally(Throwable failure) {
+            return false;
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        @Override
+        public void obtrudeValue(V value) {
+            throw new UnsupportedOperationException("Task result Future is read-only");
+        }
+
+        @Override
+        public void obtrudeException(Throwable failure) {
+            throw new UnsupportedOperationException("Task result Future is read-only");
+        }
     }
 }

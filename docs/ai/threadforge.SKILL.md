@@ -171,7 +171,7 @@ Joiner rules:
 
 | Policy | Behavior | Use Case |
 |---|---|---|
-| `FAIL_FAST` | First failure throws, cancel remaining | Default; fail-fast pipelines |
+| `FAIL_FAST` | First completed failure throws, cancel remaining | Default; fail-fast pipelines |
 | `COLLECT_ALL` | Wait all, throw `AggregateException` if any failed | Batch jobs needing all results |
 | `SUPERVISOR` | Never auto-cancel; failures in `Outcome` | Independent tasks, no cascading |
 | `CANCEL_OTHERS` | Cancel siblings on failure, don't throw | Fan-out with graceful degradation |
@@ -192,6 +192,7 @@ RetryPolicy.builder()                                          // Full customiza
 ```
 
 Note: `maxAttempts` includes the first attempt. CancelledException and Error are never retried by default.
+Exponential-backoff multipliers must be finite and at least `1.0`; computed delays are clamped to `maxDelay` without numeric overflow.
 
 ### Scheduler
 
@@ -203,6 +204,8 @@ Scheduler.priority(4)           // Priority queue pool, scope OWNS
 Scheduler.virtualThreads()      // Explicit virtual threads, scope does NOT own
 Scheduler.from(executorService) // Wrap external executor, scope does NOT own
 ```
+
+An owned scheduler (`fixed`/`priority`) belongs to one scope and is closed with it. Use `from(...)` with a caller-managed executor when multiple scopes must share an executor. Submissions after shutdown are rejected.
 
 ### Context Propagation
 
@@ -236,6 +239,8 @@ channel.close();         // Signal no more sends
 // Iterable: for (T v : channel) { ... } stops after closed and drained
 ```
 
+Blocked `send`/`receive` calls are interruptible and surface cancellation as `CancelledException` while preserving the interrupt flag.
+
 ### Scheduling
 
 ```java
@@ -253,6 +258,9 @@ ScheduledTask poll = scope.scheduleWithFixedDelay(
 // Cancel any scheduled task
 t.cancel();
 ```
+
+For direct scheduling, `DelayScheduler.singleThread()` is owned and must be closed (prefer try-with-resources). Closing `DelayScheduler.shared()` or `DelayScheduler.from(executor)` does not close the shared or external executor.
+One-shot delays and periodic initial delays may be zero but not negative; fixed-rate periods and fixed delays must be positive. Scheduling preserves nanosecond precision.
 
 ### Task Composition
 
@@ -420,6 +428,8 @@ try (ThreadScope scope = ThreadScope.open()
 // Requires OpenTelemetry API on classpath
 ```
 
+ThreadLocal-style hooks are installed and restored on the same runner thread. A shared hook must distinguish tasks by both scope ID and task ID; timeout signals do not move context cleanup to the timer thread.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -441,7 +451,13 @@ try (ThreadScope scope = ThreadScope.open()
 | `ExecutorService.submit()` | `scope.submit()` |
 | `CompletableFuture.get()` | `task.await()` |
 | `CompletableFuture.allOf()` | `scope.await(tasks)` / `scope.awaitAll(tasks)` |
+
 | `ExecutorService.shutdownNow()` | `scope.close()` (try-with-resources) |
 | `ThreadLocal` manual propagation | `Context.put/get` (auto-propagated) |
 | Custom retry loops | `RetryPolicy` + `scope.withRetryPolicy()` |
 | Manual timeout management | `scope.withDeadline()` or per-task `Duration` timeout |
+
+`task.toCompletableFuture()` is an observation-only mirror. Do not use it to complete or cancel the underlying task; call `task.cancel()` for framework-aware cancellation.
+Interrupting a thread blocked in `task.await()` or `scope.await(...)` throws `CancelledException` without changing target task states.
+`scope.close()` waits for started work to physically exit before deferred cleanup; code that ignores interruption keeps close blocked.
+Registrations racing with close either succeed and are cleaned up, or fail with `IllegalStateException`; no resource is accepted after close.

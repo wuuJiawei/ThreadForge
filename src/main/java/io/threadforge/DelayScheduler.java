@@ -17,9 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>用于承载 once/fixed-rate/fixed-delay 三类定时任务。
  * 在多个 scope 之间共享时是线程安全的。
  */
-public final class DelayScheduler {
+public final class DelayScheduler implements AutoCloseable {
 
-    private static final DelayScheduler SHARED = new DelayScheduler(createSharedExecutor(), false);
+    private static final DelayScheduler SHARED = new DelayScheduler(createSharedExecutor("threadforge-delay"), false);
+    private static final DelayScheduler CONTROL = new DelayScheduler(createSharedExecutor("threadforge-control"), false);
 
     private final ScheduledExecutorService executor;
     private final boolean ownsExecutor;
@@ -50,6 +51,10 @@ public final class DelayScheduler {
         return SHARED;
     }
 
+    static DelayScheduler control() {
+        return CONTROL;
+    }
+
     /**
      * 基于外部 {@link ScheduledExecutorService} 构造包装。
      *
@@ -74,6 +79,7 @@ public final class DelayScheduler {
     public <T> ScheduledTask schedule(Duration delay, final Callable<T> callable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(callable, "callable");
+        long delayNanos = toNanos(delay, "delay", true);
         ScheduledFuture<?> future = executor.schedule(new Runnable() {
             @Override
             public void run() {
@@ -83,7 +89,7 @@ public final class DelayScheduler {
                     throw new RuntimeException(e);
                 }
             }
-        }, delay.toMillis(), TimeUnit.MILLISECONDS);
+        }, delayNanos, TimeUnit.NANOSECONDS);
         return new DefaultScheduledTask(future);
     }
 
@@ -93,7 +99,8 @@ public final class DelayScheduler {
     public ScheduledTask schedule(Duration delay, final Runnable runnable) {
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
-        ScheduledFuture<?> future = executor.schedule(runnable, delay.toMillis(), TimeUnit.MILLISECONDS);
+        long delayNanos = toNanos(delay, "delay", true);
+        ScheduledFuture<?> future = executor.schedule(runnable, delayNanos, TimeUnit.NANOSECONDS);
         return new DefaultScheduledTask(future);
     }
 
@@ -113,11 +120,13 @@ public final class DelayScheduler {
         Objects.requireNonNull(initial, "initial");
         Objects.requireNonNull(period, "period");
         Objects.requireNonNull(runnable, "runnable");
+        long initialNanos = toNanos(initial, "initial delay", true);
+        long periodNanos = toNanos(period, "period", false);
         ScheduledFuture<?> future = executor.scheduleAtFixedRate(
             runnable,
-            initial.toMillis(),
-            period.toMillis(),
-            TimeUnit.MILLISECONDS
+            initialNanos,
+            periodNanos,
+            TimeUnit.NANOSECONDS
         );
         return new DefaultScheduledTask(future);
     }
@@ -131,31 +140,55 @@ public final class DelayScheduler {
         Objects.requireNonNull(initial, "initial");
         Objects.requireNonNull(delay, "delay");
         Objects.requireNonNull(runnable, "runnable");
+        long initialNanos = toNanos(initial, "initial delay", true);
+        long delayNanos = toNanos(delay, "delay", false);
         ScheduledFuture<?> future = executor.scheduleWithFixedDelay(
             runnable,
-            initial.toMillis(),
-            delay.toMillis(),
-            TimeUnit.MILLISECONDS
+            initialNanos,
+            delayNanos,
+            TimeUnit.NANOSECONDS
         );
         return new DefaultScheduledTask(future);
     }
 
     /**
-     * 当当前调度器拥有执行器所有权时，关闭执行器。
+     * 关闭此调度器拥有的执行器。
+     *
+     * <p>{@link #shared()} 与 {@link #from(ScheduledExecutorService)} 不拥有执行器，
+     * 因此调用此方法不会关闭共享或外部执行器。重复关闭是安全的。
      */
-    void shutdownIfOwned() {
+    @Override
+    public void close() {
         if (ownsExecutor) {
             executor.shutdownNow();
         }
     }
 
     /**
+     * 当当前调度器拥有执行器所有权时，关闭执行器。
+     */
+    void shutdownIfOwned() {
+        close();
+    }
+
+    private static long toNanos(Duration duration, String name, boolean allowZero) {
+        if (duration.isNegative() || (!allowZero && duration.isZero())) {
+            throw new IllegalArgumentException(name + (allowZero ? " must be >= 0" : " must be > 0"));
+        }
+        try {
+            return duration.toNanos();
+        } catch (ArithmeticException overflow) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    /**
      * 创建框架默认共享的单线程调度执行器。
      */
-    private static ScheduledExecutorService createSharedExecutor() {
+    private static ScheduledExecutorService createSharedExecutor(String threadName) {
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(
             1,
-            new NamedThreadFactory("threadforge-delay")
+            new NamedThreadFactory(threadName)
         );
         executor.setRemoveOnCancelPolicy(true);
         executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);

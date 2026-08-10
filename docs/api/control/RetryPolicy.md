@@ -28,7 +28,9 @@
 ### `RetryPolicy.exponentialBackoff(int maxAttempts, Duration initialDelay, double multiplier, Duration maxDelay)`
 
 - 指数退避重试，延迟计算为 `initialDelay * multiplier^(attempt-1)`
+- `multiplier` 必须是有限数且大于等于 `1.0`
 - 延迟不会超过 `maxDelay`
+- 超大 Duration 或计算溢出时仍稳定截断到 `maxDelay`，不会产生负延迟
 
 ## 在 ThreadScope 中使用
 

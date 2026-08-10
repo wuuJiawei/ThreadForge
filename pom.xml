@@ -46,6 +46,7 @@
         <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
         <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
         <central.publishing.plugin.version>0.9.0</central.publishing.plugin.version>
+        <opentelemetry.version>1.44.1</opentelemetry.version>
     </properties>
 
     <dependencies>
@@ -53,6 +54,12 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+            <version>${opentelemetry.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

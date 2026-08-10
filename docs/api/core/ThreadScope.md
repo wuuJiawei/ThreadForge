@@ -46,6 +46,7 @@ try (ThreadScope scope = ThreadScope.open()
 - `deadline = Duration.ofSeconds(30)`
 - 自动传播 `Context`（提交/调度时捕获，执行时恢复）
 - 作用域关闭时自动取消未完成任务和计划任务
+- `submit`、`schedule*`、`defer` 与 `close` 原子竞争：注册成功必由关闭流程处理，关闭先发生则注册抛 `IllegalStateException`
 
 ## API 清单
 
@@ -257,6 +258,7 @@ try (ThreadScope scope = ThreadScope.open()
   - `TaskTimeoutException`：任务级超时
   - `RuntimeException`：`FAIL_FAST` 下的首个失败
   - `AggregateException`：`COLLECT_ALL` 下有失败
+- 等待线程被中断时保留中断标记并立即抛 `CancelledException`，不会修改目标任务状态
 
 ### `Outcome await(Task<?> first, Task<?>... rest)`
 
@@ -306,13 +308,15 @@ try (ThreadScope scope = ThreadScope.open()
 1. 触发 token 取消
 2. 取消全部计划任务
 3. 取消全部未完成任务
-4. 依次执行 `defer` 清理（LIFO）
-5. 取消截止时间监控任务
-6. 关闭由 scope 持有的执行器
+4. 等待已启动的任务和计划工作真正退出
+5. 依次执行 `defer` 清理（LIFO）
+6. 取消截止时间监控任务
+7. 关闭由 scope 持有的执行器
 
 异常语义：
 
 - `close()` 本身是幂等的
+- 用户代码若忽略中断，`close()` 会继续等待，直到该代码自行退出；框架不会把逻辑取消伪装成物理结束
 - 清理过程中的异常会聚合（通过 `addSuppressed`）后抛出
 - 如果主流程已有异常（比如 try-with-resources 体内抛错），清理异常会以 suppressed 形式附加
 

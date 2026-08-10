@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,22 +19,26 @@ class AwaitInterruptionTest {
     void taskAwaitPropagatesWaiterInterruptionWithoutChangingTask() throws Exception {
         CountDownLatch taskStarted = new CountDownLatch(1);
         CountDownLatch releaseTask = new CountDownLatch(1);
-        try (ThreadScope scope = ThreadScope.open()) {
-            Task<Void> task = scope.submit(blockingTask(taskStarted, releaseTask));
-            assertTrue(taskStarted.await(1L, TimeUnit.SECONDS));
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        try {
+            try (ThreadScope scope = ThreadScope.open().withScheduler(Scheduler.from(worker))) {
+                Task<Void> task = scope.submit(blockingTask(taskStarted, releaseTask));
+                assertTrue(taskStarted.await(1L, TimeUnit.SECONDS));
 
-            WaitResult result = interruptWaiter(new Runnable() {
-                @Override
-                public void run() {
-                    task.await();
-                }
-            });
+                WaitResult result = interruptWaiter(new Runnable() {
+                    @Override
+                    public void run() {
+                        task.await();
+                    }
+                });
 
-            assertTrue(result.failure.get() instanceof CancelledException);
-            assertTrue(result.interruptPreserved.get());
-            assertEquals(Task.State.RUNNING, task.state());
+                assertTrue(result.failure.get() instanceof CancelledException);
+                assertTrue(result.interruptPreserved.get());
+                assertEquals(Task.State.RUNNING, task.state());
+            }
         } finally {
             releaseTask.countDown();
+            worker.shutdownNow();
         }
     }
 

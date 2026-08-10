@@ -53,6 +53,7 @@ class OpenTelemetryThreadContextTest {
     @Test
     void runningTimeoutClosesOpenTelemetryScopeOnRunner() throws Exception {
         ExecutorService worker = Executors.newSingleThreadExecutor();
+        worker.submit(() -> null).get(1L, TimeUnit.SECONDS);
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch interruptObserved = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
@@ -72,7 +73,7 @@ class OpenTelemetryThreadContextTest {
                         }
                     }
                 }
-            }, Duration.ofMillis(40));
+            }, Duration.ofMillis(500));
             assertTrue(started.await(1L, TimeUnit.SECONDS));
             assertThrows(TaskTimeoutException.class, task::await);
             assertTrue(interruptObserved.await(1L, TimeUnit.SECONDS));

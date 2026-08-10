@@ -4,12 +4,12 @@ This guide is for developers who want to add ThreadForge to an existing Java pro
 
 ## Latest Stable Release
 
-Verified on 2026-04-30:
+Verified on 2026-08-10:
 
 - repository: Maven Central
 - groupId: `pub.lighting`
 - artifactId: `threadforge-core`
-- latest stable version: `1.2.1`
+- latest stable version: `1.2.2`
 
 Reference:
 
@@ -23,7 +23,7 @@ Add this to `pom.xml`:
 <dependency>
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
 </dependency>
 ```
 
@@ -32,7 +32,7 @@ Add this to `pom.xml`:
 Add this to `build.gradle`:
 
 ```gradle
-implementation("pub.lighting:threadforge-core:1.2.1")
+implementation("pub.lighting:threadforge-core:1.2.2")
 ```
 
 ## Gradle Kotlin DSL
@@ -40,7 +40,7 @@ implementation("pub.lighting:threadforge-core:1.2.1")
 Add this to `build.gradle.kts`:
 
 ```kotlin
-implementation("pub.lighting:threadforge-core:1.2.1")
+implementation("pub.lighting:threadforge-core:1.2.2")
 ```
 
 ## Basic Usage

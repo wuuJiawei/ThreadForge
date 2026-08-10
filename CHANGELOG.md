@@ -4,6 +4,15 @@
 
 规则：按时间倒序记录（最新版本在最上方）。
 
+## [1.2.2] - 2026-08-10
+
+1. 修复内部 deadline、task timeout、hedged 启动和超时 Hook 与用户定时任务共用调度线程的问题，隔离控制调度并避免用户代码阻塞超时信号。
+2. 统一 Task 状态、Future、runnerThread 与 Scope 跟踪的生命周期竞争语义，保证终态不可覆盖、排队超时任务不执行，并区分逻辑完成与物理退出。
+3. 让 Task 观察 Future 只读，Channel 阻塞操作响应中断，`FAIL_FAST` 按实际完成顺序失败，并正确传播 await 中断。
+4. 让 Scope close 等待任务执行包装器退出，close 与 submit/schedule/defer 注册原子化，owned Scheduler 和 DelayScheduler 在关闭后明确拒绝任务。
+5. 修复 MDC、OpenTelemetry 和 Hook 上下文在线程恢复、超时和异常路径中的清理语义；补充 RetryPolicy 与 DelayScheduler 参数校验。
+6. CI 新增 integrations、examples、benchmarks 验证，并增加覆盖生命周期、取消、调度隔离、上下文恢复和并发竞态的回归测试。
+
 ## [1.2.1] - 2026-07-26
 
 1. `ThreadScope.submit(...)` 新增匿名和具名 `Runnable` 基础重载，返回 `Task<Void>` 并复用现有任务生命周期、失败、取消、上下文传播与观测语义。

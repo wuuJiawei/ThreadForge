@@ -59,7 +59,7 @@ mvn -B -ntp -P release clean deploy
 1. 在目标 release commit 中更新 `pom.xml`、`README.md`、`CHANGELOG.md` 等版本信息
 2. 将变更合入 `main`
 3. 在本地执行 `mvn -B -ntp -P release clean deploy`，先把目标版本发布到 Maven Central
-4. Central 发布成功后，再创建并推送 tag，例如 `git tag v1.2.1 && git push origin v1.2.1`
+4. Central 发布成功后，再创建并推送 tag，例如 `git tag v1.2.2 && git push origin v1.2.2`
 5. 等待 GitHub Actions `Release` workflow 完成
 6. 检查 GitHub Release 正文与附件
 

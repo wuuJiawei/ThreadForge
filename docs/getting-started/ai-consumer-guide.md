@@ -10,9 +10,9 @@ artifactId: threadforge-core
 repository: Maven Central
 ```
 
-Verified on 2026-04-30:
+Verified on 2026-08-10:
 
-- latest stable version on Maven Central: `1.2.1`
+- latest stable version on Maven Central: `1.2.2`
 - artifact page: [pub.lighting:threadforge-core](https://central.sonatype.com/artifact/pub.lighting/threadforge-core)
 
 ## Behavior Rules

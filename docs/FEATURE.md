@@ -12,7 +12,7 @@ Current product line:
 
 ## Shipped Capabilities
 
-The following capabilities are already part of the released public API in `1.2.1`:
+The following capabilities are already part of the released public API in `1.2.2`:
 
 | Area | Capability | Public API |
 |---|---|---|

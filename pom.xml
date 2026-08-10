@@ -5,7 +5,7 @@
 
     <groupId>pub.lighting</groupId>
     <artifactId>threadforge-core</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
     <name>ThreadForge Core</name>
     <description>Structured concurrency framework for Java focused on reducing the cognitive load of concurrent programming.</description>
     <url>https://github.com/wuuJiawei/ThreadForge</url>
@@ -32,7 +32,7 @@
         <url>https://github.com/wuuJiawei/ThreadForge</url>
         <connection>scm:git:https://github.com/wuuJiawei/ThreadForge.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/wuuJiawei/ThreadForge.git</developerConnection>
-        <tag>v1.2.1</tag>
+        <tag>v1.2.2</tag>
     </scm>
 
     <properties>

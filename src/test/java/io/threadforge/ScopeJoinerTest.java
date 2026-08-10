@@ -30,7 +30,7 @@ class ScopeJoinerTest {
                     public String call() throws Exception {
                         slowStarted.countDown();
                         try {
-                            Thread.sleep(1000L);
+                            new CountDownLatch(1).await();
                         } catch (InterruptedException interruptedException) {
                             slowCancelled.countDown();
                             throw interruptedException;
@@ -40,7 +40,8 @@ class ScopeJoinerTest {
                 },
                 new Callable<String>() {
                     @Override
-                    public String call() {
+                    public String call() throws Exception {
+                        assertTrue(slowStarted.await(1L, TimeUnit.SECONDS));
                         return "fast";
                     }
                 }

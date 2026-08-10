@@ -16,7 +16,7 @@ If you want AI guidance for adding ThreadForge as a Maven/Gradle dependency to a
 | `threadforge.mdc` | your tool reads Cursor-style rule files | Cursor, Windsurf-compatible rule systems |
 | `threadforge-agents.md` | your tool reads AGENTS-style repository instructions | Codex CLI, Gemini CLI, Copilot instruction files, generic AGENTS consumers |
 
-All three files describe the current public API surface of ThreadForge `1.2.2`.
+All three files describe the current public API surface of ThreadForge `1.2.3`.
 
 ## What These Files Teach the Assistant
 
@@ -122,4 +122,4 @@ When the roadmap changes without a shipped API change:
 
 ## Version
 
-These files currently track ThreadForge `1.2.2`.
+These files currently track ThreadForge `1.2.3`.

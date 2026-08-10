@@ -1,7 +1,7 @@
 # ThreadForge Roadmap
 
 > Last updated: 2026-08-10
-> Planning baseline: post-`1.2.2`
+> Planning baseline: post-`1.2.3`
 > Spring Boot starter / Actuator integration: deferred for a later phase
 
 ## Roadmap Principles
@@ -11,6 +11,11 @@
 - Public API changes must ship with tests, docs, and at least one runnable example.
 - Human onboarding and AI onboarding are first-class product surfaces, not afterthoughts.
 - Framework-specific integrations stay outside `threadforge-core`.
+
+## Released In 1.2.3
+
+- fixed runner interrupt-state leakage across JDK 8 worker reuse
+- added deterministic Channel/deadline thread-reuse regression coverage
 
 ## Released In 1.2.2
 
